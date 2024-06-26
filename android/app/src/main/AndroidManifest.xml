@@ -40,6 +40,5 @@
       </activity>
 
       <meta-data android:name="com.google.ar.core" android:value="optional" />
-      <meta-data android:name="com.samsung.android.vr.application.mode" android:value="vr_only"/>
     </application>
 </manifest>

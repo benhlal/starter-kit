@@ -6,15 +6,15 @@ import {
   ViroTrackingStateConstants,
 } from "@reactvision/react-viro";
 import React, { useState } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, TextInput, View, Button } from "react-native";
 
-const HelloWorldSceneAR = () => {
+const HelloWorldSceneAR = ({ userText }) => {
   const [text, setText] = useState("Initializing AR...");
 
   function onInitialized(state: any, reason: ViroTrackingReason) {
     console.log("onInitialized", state, reason);
     if (state === ViroTrackingStateConstants.TRACKING_NORMAL) {
-      setText("Hello World!");
+      setText(userText);
     } else if (state === ViroTrackingStateConstants.TRACKING_UNAVAILABLE) {
       // Handle loss of tracking
     }
@@ -32,20 +32,49 @@ const HelloWorldSceneAR = () => {
   );
 };
 
-export default () => {
+const ARApp = () => {
+  const [inputText, setInputText] = useState("");
+  const [submittedText, setSubmittedText] = useState("Hello World!");
+
   return (
-    <ViroARSceneNavigator
-      autofocus={true}
-      initialScene={{
-        scene: HelloWorldSceneAR,
-      }}
-      style={styles.f1}
-    />
+    <View style={styles.container}>
+      <ViroARSceneNavigator
+        autofocus={true}
+        initialScene={{
+          scene: () => <HelloWorldSceneAR userText={submittedText} />,
+        }}
+        style={styles.f1}
+      />
+      <TextInput
+        style={styles.textInput}
+        placeholder="Type text to display in AR"
+        value={inputText}
+        onChangeText={(text) => setInputText(text)}
+      />
+      <Button
+        title="Update AR Text"
+        onPress={() => setSubmittedText(inputText)}
+      />
+    </View>
   );
 };
 
-var styles = StyleSheet.create({
-  f1: { flex: 1 },
+export default ARApp;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  f1: {
+    flex: 1,
+  },
+  textInput: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 10,
+  },
   helloWorldTextStyle: {
     fontFamily: "Arial",
     fontSize: 30,

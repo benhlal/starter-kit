@@ -23,7 +23,6 @@ class MainApplication : Application(), ReactApplication {
               // add(MyReactNativePackage())
               
               // https://viro-community.readme.io/docs/installation-instructions#5-now-add-the-viro-package-to-your-mainapplication
-              add(ReactViroPackage(ReactViroPackage.ViroPlatform.GVR))
               add(ReactViroPackage(ReactViroPackage.ViroPlatform.AR))
             }
 
