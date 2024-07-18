@@ -1,14 +1,23 @@
-import React from 'react';
-import { ViroARScene, Viro3DObject, ViroAmbientLight, ViroAnimations } from '@reactvision/react-viro';
+import React from "react";
+import {
+  Viro3DObject,
+  ViroAmbientLight,
+  ViroAnimations,
+  ViroARScene,
+} from "@reactvision/react-viro";
 
-const HomeScene = (props: { sceneNavigator: { viroAppProps: { object: any; scale: [number, number, number] } } }): JSX.Element => {
+const HomeScene = (props: {
+  sceneNavigator: {
+    viroAppProps: { object: any; scale: [number, number, number] };
+  };
+}): JSX.Element => {
   const { object, scale } = props.sceneNavigator.viroAppProps;
 
   ViroAnimations.registerAnimations({
     rotate: {
       duration: 2550,
-      properties: { rotateY: '+=90' },
-      easing: 'Linear',
+      properties: { rotateY: "+=90" },
+      easing: "Linear",
       loop: true,
     },
   });
@@ -24,7 +33,7 @@ const HomeScene = (props: { sceneNavigator: { viroAppProps: { object: any; scale
           scale={scale}
           rotation={[45, 50, 40]}
           type="OBJ"
-          animation={{ name: 'rotate', run: true, loop: true }}
+          animation={{ name: "rotate", run: true, loop: true }}
         />
       )}
     </ViroARScene>
