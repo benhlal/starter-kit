@@ -7,12 +7,27 @@ import {
   ViroText,
 } from "@reactvision/react-viro";
 
+interface ARObject {
+  id: string;
+  name: string;
+  img: any;
+  obj?: any;
+  mtl?: any;
+  position: [number, number, number];
+}
+
+interface TextObject {
+  id: string;
+  text: string;
+  position: [number, number, number];
+}
+
 const HomeScene = (props: {
   sceneNavigator: {
     viroAppProps: {
-      object: any;
+      object: ARObject | null;
       scale: [number, number, number];
-      textObject: { id: string; text: string } | null;
+      textObject: TextObject | null;
     };
   };
 }): JSX.Element => {
@@ -30,21 +45,21 @@ const HomeScene = (props: {
   return (
     <ViroARScene>
       <ViroAmbientLight color="#ffffff" />
-      {object && (
+      {object && object.obj && object.mtl ? (
         <Viro3DObject
           source={object.obj}
           resources={[object.mtl]}
-          position={[0, 0, -3]}
+          position={object.position}
           scale={scale}
           rotation={[45, 50, 40]}
           type="OBJ"
           animation={{ name: "rotate", run: true, loop: true }}
         />
-      )}
+      ) : null}
       {textObject && (
         <ViroText
           text={textObject.text}
-          position={[0, 0, -3]}
+          position={textObject.position}
           scale={[0.5, 0.5, 0.5]}
           style={{ color: "#000", fontSize: 20, textAlign: "center" }}
         />

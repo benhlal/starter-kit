@@ -10,6 +10,8 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-firebase/app": "^20.3.0",
+    "@react-native-firebase/firestore": "^20.3.0",
     "@react-navigation/native": "^6.1.17",
     "@react-navigation/stack": "^6.3.29",
     "@reactvision/react-viro": "^2.41.4",
