@@ -3,8 +3,6 @@ import { ViroARSceneNavigator } from "@reactvision/react-viro";
 import {
   Animated,
   Dimensions,
-  FlatList,
-  Image,
   PanResponder,
   Text,
   TextInput,
@@ -18,8 +16,9 @@ import {
   State,
 } from "react-native-gesture-handler";
 import HomeScene from "./scenes/HomeScene";
-import styles from "./styles"; // Importing the styles
+import Grid from "./components/Grid/Grid";
 import firestore from "@react-native-firebase/firestore";
+import  styles  from "./styles";
 
 const { height: screenHeight } = Dimensions.get("window");
 
@@ -136,35 +135,22 @@ const App = () => {
     if (textInput.trim() !== "") {
       const newTextObject: TextObject = { id: "text", text: textInput.trim(), position: [0, 0, -3] };
       setTextObject(newTextObject);
-      setSelectedObject(null); // Set to null to ensure the text object is displayed instead of a 3D object
-      setTextInput(""); // Clear the input field
-      // Save the text object to Firebase
+      setSelectedObject(null);
+      setTextInput("");
       firestore().collection('arObjects').add({ ...newTextObject, timestamp: firestore.FieldValue.serverTimestamp() });
     }
   };
 
   const handleObjectSelect = (item: ARObject) => {
     setSelectedObject(item);
-    setTextObject(null); // Clear any text object when a 3D object is selected
-    // Ensure the menu remains open when selecting an object
+    setTextObject(null);
     Animated.timing(animatedHeight, {
       toValue: screenHeight * 0.5,
       duration: 300,
       useNativeDriver: false,
     }).start();
-    // Save the object selection to Firebase
     firestore().collection('arObjects').add({ ...item, timestamp: firestore.FieldValue.serverTimestamp() });
   };
-
-  const renderItem = ({ item }: { item: ARObject }) => (
-    <TouchableOpacity
-      style={styles.listItem}
-      onPress={() => handleObjectSelect(item)}
-    >
-      <Image source={item.img} style={styles.listItemImage} />
-      <Text style={styles.listItemText}>{item.name}</Text>
-    </TouchableOpacity>
-  );
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -192,13 +178,7 @@ const App = () => {
           {...panResponder.panHandlers}
         >
           <View style={styles.handle} />
-          <FlatList
-            data={objects}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            numColumns={3}
-            contentContainerStyle={styles.scrollContent}
-          />
+          <Grid items={objects} onSelect={handleObjectSelect} />
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.textInput}
