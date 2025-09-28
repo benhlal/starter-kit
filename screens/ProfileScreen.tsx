@@ -6,16 +6,16 @@ import { RootStackParamList } from "../App";
 type ProfileNav = StackNavigationProp<RootStackParamList, "Profile">;
 
 interface Props {
-  navigation: ProfileNav;
+  navigation?: ProfileNav;
 }
 
 const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>👤 Profile Screen</Text>
-      <Button title="Go to Home" onPress={() => navigation.navigate("Home")} />
-      <Button title="Go to Map" onPress={() => navigation.navigate("Map")} />
-      <Button title="Go to AR" onPress={() => navigation.navigate("AR")} />
+      <Button title="Go to Home" onPress={() => navigation?.navigate("Home")} />
+      <Button title="Go to Map" onPress={() => navigation?.navigate("Map")} />
+      <Button title="Go to AR" onPress={() => navigation?.navigate("AR")} />
     </View>
   );
 };

@@ -93,7 +93,17 @@ const EventScreen: React.FC<Props> = ({ navigation }) => {
       </TouchableWithoutFeedback>
 
       {/* Shared Bottom Navigation */}
-      <BottomNav navigation={navigation} active="EVENTS" />
+      <BottomNav
+        navigation={navigation}
+        active="EVENTS"
+        setActiveTab={function (
+          _value: React.SetStateAction<
+            "Home" | "Profile" | "Map" | "EVENTS" | "Search"
+          >
+        ) {
+          // No-op for stack screens
+        }}
+      />
     </View>
   );
 };
@@ -128,7 +138,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-  // ...existing code...
 });
 
 export default EventScreen;
