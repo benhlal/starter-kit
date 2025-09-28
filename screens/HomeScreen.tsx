@@ -23,6 +23,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         title="Check Events"
         onPress={() => navigation.navigate("EVENTS")}
       />
+      <Button
+        title="Go to Search"
+        onPress={() => navigation.navigate("Search")}
+      />
     </View>
   );
 };

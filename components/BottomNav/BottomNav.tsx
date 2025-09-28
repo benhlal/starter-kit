@@ -8,7 +8,7 @@ type NavProp = StackNavigationProp<RootStackParamList>;
 
 interface Props {
   navigation: NavProp;
-  active?: "EVENTS" | "Map" | "Profile";
+  active?: "EVENTS" | "Map" | "Profile" | "Search";
 }
 
 const BottomNav: React.FC<Props> = ({ navigation, active }) => (
@@ -18,19 +18,31 @@ const BottomNav: React.FC<Props> = ({ navigation, active }) => (
         style={styles.navButton}
         onPress={() => navigation.navigate("EVENTS")}
       >
-        <Text style={[styles.navText, active === "EVENTS" && styles.activeText]}>Search</Text>
+        <Text
+          style={[styles.navText, active === "EVENTS" && styles.activeText]}
+        >
+          Search
+        </Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.navButton}
         onPress={() => navigation.navigate("Profile")}
       >
-        <Text style={[styles.navText, active === "Profile" && styles.activeText]}>Rentals</Text>
+        <Text
+          style={[styles.navText, active === "Profile" && styles.activeText]}
+        >
+          Rentals
+        </Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.navButton}
         onPress={() => navigation.navigate("Profile")}
       >
-        <Text style={[styles.navText, active === "Profile" && styles.activeText]}>Account</Text>
+        <Text
+          style={[styles.navText, active === "Profile" && styles.activeText]}
+        >
+          Account
+        </Text>
       </TouchableOpacity>
     </View>
   </SafeAreaView>

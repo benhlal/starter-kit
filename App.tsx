@@ -7,6 +7,7 @@ import ProfileScreen from "./screens/ProfileScreen";
 import MapScreen from "./screens/MapScreen";
 import ARScreen from "./screens/ARScreen";
 import EventScreen from "./screens/EventScreen";
+import SearchScreen from "./screens/SearchScreen";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -14,6 +15,7 @@ export type RootStackParamList = {
   Map: undefined;
   AR: undefined;
   EVENTS: undefined;
+  Search: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -35,6 +37,7 @@ const App = () => {
           component={EventScreen}
           options={{ headerShown: false }}
         />
+  <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
