@@ -10,6 +10,8 @@ import {
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import BottomNav from "../components/BottomNav/BottomNav";
 import ProfileScreen from "./ProfileScreen";
+import { useRecoilState } from "recoil";
+import { activeTabState } from "../state/tabs";
 
 const events = [
   {
@@ -72,11 +74,8 @@ const getaroundMapStyle = [
 ];
 
 const HomeScreen: React.FC = () => {
+  const [activeTab, setActiveTab] = useRecoilState(activeTabState);
   const [showMap, setShowMap] = useState(false);
-  // HomeScreen.tsx
-  const [activeTab, setActiveTab] = useState<
-    "Home" | "Profile" | "Account" | "Map" | "EVENTS" | "Search"
-  >("Home");
 
   const renderItem = ({ item }: any) => (
     <View style={styles.card}>
@@ -90,7 +89,7 @@ const HomeScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Home Tab (List + Map Toggle) */}
+      {/* Home Tab */}
       <View
         style={[
           styles.content,
@@ -127,7 +126,7 @@ const HomeScreen: React.FC = () => {
         </TouchableWithoutFeedback>
       </View>
 
-      {/* Account Tab (ProfileScreen) */}
+      {/* Account Tab */}
       <View
         style={[
           styles.content,
@@ -137,7 +136,7 @@ const HomeScreen: React.FC = () => {
         <ProfileScreen navigation={undefined as any} />
       </View>
 
-      {/* Rentals Tab (ProfileScreen as placeholder) */}
+      {/* Profile Tab */}
       <View
         style={[
           styles.content,
@@ -154,18 +153,9 @@ const HomeScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#121212",
-  },
-  content: {
-    flex: 1,
-  },
-  map: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
+  container: { flex: 1, backgroundColor: "#121212" },
+  content: { flex: 1 },
+  map: { flex: 1, width: "100%", height: "100%" },
   card: {
     backgroundColor: "#1e1e1e",
     borderRadius: 12,
@@ -192,11 +182,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     zIndex: 10,
   },
-  floatingButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
+  floatingButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });
 
 export default HomeScreen;

@@ -2,14 +2,8 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableWithoutFeedback } from "react-native";
 import BottomNav from "../components/BottomNav/BottomNav";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
-import { StackNavigationProp } from "@react-navigation/stack";
-import { RootStackParamList } from "../App";
-
-type MapNav = StackNavigationProp<RootStackParamList, "Map">;
-
-interface Props {
-  navigation: MapNav;
-}
+import { useRecoilState } from "recoil";
+import { activeTabState } from "../state/tabs";
 
 const getaroundMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#181a20" }] },
@@ -28,7 +22,9 @@ const getaroundMapStyle = [
   },
 ];
 
-const MapScreen: React.FC<Props> = ({ navigation }) => {
+const MapScreen: React.FC = () => {
+  const [activeTab, setActiveTab] = useRecoilState(activeTabState);
+
   return (
     <View style={styles.container}>
       {/* Map */}
@@ -44,20 +40,15 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
         customMapStyle={getaroundMapStyle}
       />
 
-      {/* Floating List Button (match Map button style/position) */}
-      <TouchableWithoutFeedback onPress={() => navigation.navigate("EVENTS")}>
-        <View
-          style={[
-            styles.floatingButton,
-            { opacity: 0.8, zIndex: 10, bottom: 145 },
-          ]}
-        >
+      {/* Floating List Button (switch to Home/List view) */}
+      <TouchableWithoutFeedback onPress={() => setActiveTab("Home")}>
+        <View style={styles.floatingButton}>
           <Text style={styles.floatingButtonText}>≡ List</Text>
         </View>
       </TouchableWithoutFeedback>
 
       {/* Shared Bottom Navigation */}
-      <BottomNav navigation={navigation} active="Map" />
+      <BottomNav active={activeTab} setActiveTab={setActiveTab} />
     </View>
   );
 };
@@ -73,7 +64,7 @@ const styles = StyleSheet.create({
   },
   floatingButton: {
     position: "absolute",
-    bottom: 70, // match EventScreen map button position
+    bottom: 70, // sits above BottomNav
     alignSelf: "center",
     backgroundColor: "#7B3FE4",
     paddingHorizontal: 24,
