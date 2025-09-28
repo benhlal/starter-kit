@@ -2,8 +2,8 @@ buildscript {
     ext {
         buildToolsVersion = "34.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 34
-        targetSdkVersion = 34
+        compileSdkVersion = 35
+        targetSdkVersion = 35
         ndkVersion = "25.1.8937393"
         kotlinVersion = "1.8.0"
     }
@@ -12,9 +12,16 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:7.0.4")
+        // ✅ Updated AGP version
+        classpath("com.android.tools.build:gradle:8.2.2")
+
+        // React Native Gradle plugin
         classpath("com.facebook.react:react-native-gradle-plugin")
+
+        // Kotlin
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+
+        // Firebase / Google services
         classpath("com.google.gms:google-services:4.3.10")
     }
 }

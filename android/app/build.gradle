@@ -1,14 +1,10 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-apply plugin: 'com.google.gms.google-services' // Ensure this is applied last
+apply plugin: "com.google.gms.google-services" // 👈 must be last for Firebase
 
-/**
- * This is the configuration block to customize your React Native Android app.
- * By default you don't need to apply any configuration, just uncomment the lines you need.
- */
 react {
-    // Configuration for React Native plugin
+    // React Native plugin config (leave default unless you need overrides)
 }
 
 def enableProguardInReleaseBuilds = false
@@ -20,6 +16,7 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.virostarterkit"
+
     defaultConfig {
         applicationId "com.virostarterkit"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -27,6 +24,7 @@ android {
         versionCode 1
         versionName "1.0"
     }
+
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -35,6 +33,7 @@ android {
             keyPassword 'android'
         }
     }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
@@ -48,26 +47,35 @@ android {
 }
 
 dependencies {
-    // The version of react-native is set by the React Native Gradle Plugin
+    // React Native core
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:flipper-integration")
 
-    // Viro Dependencies
+    // Viro Dependencies (AR/VR support)
     implementation project(':gvr_common')
     implementation project(':arcore_client')
     implementation project(path: ':react_viro')
     implementation project(path: ':viro_renderer')
+
+    // Media3
     implementation 'androidx.media3:media3-exoplayer:1.1.1'
     implementation 'androidx.media3:media3-exoplayer-dash:1.1.1'
     implementation 'androidx.media3:media3-exoplayer-hls:1.1.1'
     implementation 'androidx.media3:media3-exoplayer-smoothstreaming:1.1.1'
+
+    // ProtoBuf
     implementation 'com.google.protobuf.nano:protobuf-javanano:3.1.0'
 
-    // Firebase Dependencies
+    // Firebase (via BoM)
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-firestore'
     implementation 'com.google.firebase:firebase-analytics'
 
+    // Google Maps & Location (needed for react-native-maps)
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+
+    // JS engine
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
@@ -75,8 +83,10 @@ dependencies {
     }
 }
 
-apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
+apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
+applyNativeModulesAppBuildGradle(project)
 
+// Ensure Firebase tasks run in correct order
 afterEvaluate {
     tasks.matching { it.name.startsWith("map") }.configureEach {
         it.dependsOn "processDebugGoogleServices"
