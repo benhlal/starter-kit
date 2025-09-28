@@ -22,40 +22,40 @@ const events = [
   {
     id: "1",
     name: "Paris City Tour",
-    balance: "Total Balance: €1200",
-    subscribers: "532 subscribers",
+    balance: "€1200",
+    subscribers: "532",
     distance: "2 km",
     img: "https://images.pexels.com/photos/338515/pexels-photo-338515.jpeg?auto=compress&w=600",
   },
   {
     id: "2",
     name: "New York Central Park Hunt",
-    balance: "Total Balance: €950",
-    subscribers: "420 subscribers",
+    balance: "€950",
+    subscribers: "420",
     distance: "5 km",
     img: "https://images.pexels.com/photos/462118/pexels-photo-462118.jpeg?auto=compress&w=600",
   },
   {
     id: "3",
     name: "Tokyo Night Run",
-    balance: "Total Balance: ¥150,000",
-    subscribers: "300 subscribers",
+    balance: "¥150,000",
+    subscribers: "300",
     distance: "3.5 km",
     img: "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
   },
   {
     id: "4",
     name: "Sydney Opera Adventure",
-    balance: "Total Balance: AU$2,100",
-    subscribers: "210 subscribers",
+    balance: "AU$2,100",
+    subscribers: "210",
     distance: "4 km",
     img: "https://images.pexels.com/photos/2193300/pexels-photo-2193300.jpeg",
   },
   {
     id: "5",
     name: "London Bridge Quest",
-    balance: "Total Balance: £1,300",
-    subscribers: "410 subscribers",
+    balance: "£1,300",
+    subscribers: "410",
     distance: "2.8 km",
     img: "https://images.pexels.com/photos/460672/pexels-photo-460672.jpeg",
   },
@@ -85,18 +85,18 @@ const SearchScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.card}>
       <Image source={{ uri: item.img }} style={styles.image} />
       <Text style={styles.title}>{item.name}</Text>
-      <Text style={styles.detail}>{item.balance}</Text>
-      <Text style={styles.detail}>{item.subscribers}</Text>
+      <Text style={styles.detail}>Total Balance: {item.balance}</Text>
+      <Text style={styles.detail}>{item.subscribers} subscribers</Text>
       <Text style={styles.distance}>📍 {item.distance}</Text>
     </View>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#121212" }}>
-      {/* Toggle between List and Map */}
-      {showMap ? (
+    <View style={styles.container}>
+      {/* Main content above BottomNav */}
+      <View style={styles.content}>
         <MapView
-          style={{ flex: 1 }}
+          style={[styles.map, { display: showMap ? "flex" : "none" }]}
           provider={PROVIDER_GOOGLE}
           initialRegion={{
             latitude: 48.8566,
@@ -106,23 +106,19 @@ const SearchScreen: React.FC<Props> = ({ navigation }) => {
           }}
           customMapStyle={getaroundMapStyle}
         />
-      ) : (
+
         <FlatList
+          style={{ display: showMap ? "none" : "flex" }}
           data={events}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 80 }}
         />
-      )}
+      </View>
 
-      {/* Floating Toggle Button */}
+      {/* Floating Toggle Button (above BottomNav) */}
       <TouchableWithoutFeedback onPress={() => setShowMap(!showMap)}>
-        <View
-          style={[
-            styles.floatingButton,
-            { opacity: 0.9, zIndex: 10, bottom: 140 },
-          ]}
-        >
+        <View style={styles.floatingButton}>
           <Text style={styles.floatingButtonText}>
             {showMap ? "≡ List" : "📍 Map"}
           </Text>
@@ -136,6 +132,18 @@ const SearchScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#121212",
+  },
+  content: {
+    flex: 1, // fill space above BottomNav
+  },
+  map: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
   card: {
     backgroundColor: "#1e1e1e",
     borderRadius: 12,
@@ -152,13 +160,15 @@ const styles = StyleSheet.create({
   distance: { color: "#7B3FE4", fontSize: 14, marginTop: 4 },
   floatingButton: {
     position: "absolute",
-    bottom: 60,
+    bottom: 140, // sits just above BottomNav
     alignSelf: "center",
     backgroundColor: "#7B3FE4",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 30,
+    opacity: 0.9,
     elevation: 6,
+    zIndex: 10,
   },
   floatingButtonText: {
     color: "#fff",
