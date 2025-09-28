@@ -1,4 +1,6 @@
+// App.tsx
 import * as React from "react";
+import { RecoilRoot } from "recoil";
 import { ViroARSceneNavigator } from "@reactvision/react-viro";
 import {
   Animated,
@@ -18,11 +20,11 @@ import {
 import HomeScene from "./scenes/HomeScene";
 import Grid from "./components/Grid/Grid";
 import firestore from "@react-native-firebase/firestore";
-import  styles  from "./styles";
+import styles from "./styles";
 
 const { height: screenHeight } = Dimensions.get("window");
 
-interface ARObject {
+export interface ARObject {
   id: string;
   name: string;
   img: any;
@@ -31,7 +33,7 @@ interface ARObject {
   position: [number, number, number];
 }
 
-interface TextObject {
+export interface TextObject {
   id: string;
   text: string;
   position: [number, number, number];
@@ -54,30 +56,34 @@ const objects: ARObject[] = [
     mtl: require("./assets/heart/12190_Heart_v1_L3.mtl"),
     position: [0, 0, -3],
   },
-  // Add more objects as needed
 ];
 
 const App = () => {
-  const [selectedObject, setSelectedObject] = React.useState<ARObject | null>(null);
-  const [scale, setScale] = React.useState<[number, number, number]>([0.05, 0.05, 0.05]);
+  const [selectedObject, setSelectedObject] = React.useState<ARObject | null>(
+    null
+  );
+  const [scale, setScale] = React.useState<[number, number, number]>([
+    0.05, 0.05, 0.05,
+  ]);
   const [textInput, setTextInput] = React.useState("");
   const [textObject, setTextObject] = React.useState<TextObject | null>(null);
 
-  const animatedHeight = React.useRef(new Animated.Value(screenHeight * 0.5)).current;
+  const animatedHeight = React.useRef(
+    new Animated.Value(screenHeight * 0.5)
+  ).current;
 
   const panResponder = React.useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 20,
-      onPanResponderMove: (e, gestureState) => {
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dy) > 20,
+      onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy < 0) {
-          // Swiping up
           Animated.timing(animatedHeight, {
             toValue: screenHeight * 0.5,
             duration: 300,
             useNativeDriver: false,
           }).start();
         } else if (gestureState.dy > 0 && animatedHeight.__getValue() > 40) {
-          // Swiping down
           Animated.timing(animatedHeight, {
             toValue: 40,
             duration: 300,
@@ -87,14 +93,12 @@ const App = () => {
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dy > 50) {
-          // Release after swiping down
           Animated.timing(animatedHeight, {
             toValue: 40,
             duration: 300,
             useNativeDriver: false,
           }).start();
         } else if (gestureState.dy < -50) {
-          // Release after swiping up
           Animated.timing(animatedHeight, {
             toValue: screenHeight * 0.5,
             duration: 300,
@@ -107,18 +111,24 @@ const App = () => {
 
   const onPinchEvent = (event: PinchGestureHandlerGestureEvent) => {
     if (event.nativeEvent.state === State.ACTIVE) {
-      const newScale = Math.max(0.01, 0.05 * event.nativeEvent.scale); // Prevent scale from being too small
+      const newScale = Math.max(0.01, 0.05 * event.nativeEvent.scale);
       setScale([newScale, newScale, newScale]);
     }
   };
 
   React.useEffect(() => {
-    // Fetch AR objects from Firebase
     const fetchObjects = async () => {
-      const objectsSnapshot = await firestore().collection('arObjects').orderBy('timestamp', 'desc').limit(1).get();
+      const objectsSnapshot = await firestore()
+        .collection("arObjects")
+        .orderBy("timestamp", "desc")
+        .limit(1)
+        .get();
+
       if (!objectsSnapshot.empty) {
-        const lastObject = objectsSnapshot.docs[0].data() as ARObject | TextObject;
-        if ('text' in lastObject) {
+        const lastObject = objectsSnapshot.docs[0].data() as
+          | ARObject
+          | TextObject;
+        if ("text" in lastObject) {
           setTextObject(lastObject as TextObject);
           setSelectedObject(null);
         } else {
@@ -133,69 +143,86 @@ const App = () => {
 
   const handleTextSubmit = () => {
     if (textInput.trim() !== "") {
-      const newTextObject: TextObject = { id: "text", text: textInput.trim(), position: [0, 0, -3] };
+      const newTextObject: TextObject = {
+        id: "text",
+        text: textInput.trim(),
+        position: [0, 0, -3],
+      };
       setTextObject(newTextObject);
       setSelectedObject(null);
       setTextInput("");
-      firestore().collection('arObjects').add({ ...newTextObject, timestamp: firestore.FieldValue.serverTimestamp() });
+
+      firestore()
+        .collection("arObjects")
+        .add({
+          ...newTextObject,
+          timestamp: firestore.FieldValue.serverTimestamp(),
+        });
     }
   };
 
   const handleObjectSelect = (item: ARObject) => {
     setSelectedObject(item);
     setTextObject(null);
+
     Animated.timing(animatedHeight, {
       toValue: screenHeight * 0.5,
       duration: 300,
       useNativeDriver: false,
     }).start();
-    firestore().collection('arObjects').add({ ...item, timestamp: firestore.FieldValue.serverTimestamp() });
+
+    firestore()
+      .collection("arObjects")
+      .add({ ...item, timestamp: firestore.FieldValue.serverTimestamp() });
   };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={styles.mainView}>
-        <PinchGestureHandler onGestureEvent={onPinchEvent}>
-          <Animated.View style={{ flex: 1 }}>
-            <ViroARSceneNavigator
-              initialScene={{ scene: HomeScene }}
-              viroAppProps={{ object: selectedObject, scale, textObject }}
-              style={{ flex: 1 }}
-            />
+    <RecoilRoot>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={styles.mainView}>
+          <PinchGestureHandler onGestureEvent={onPinchEvent}>
+            <Animated.View style={{ flex: 1 }}>
+              <ViroARSceneNavigator
+                initialScene={{ scene: HomeScene }}
+                viroAppProps={{ object: selectedObject, scale, textObject }}
+                style={{ flex: 1 }}
+              />
+            </Animated.View>
+          </PinchGestureHandler>
+
+          <Animated.View
+            style={[
+              styles.scrollContainer,
+              {
+                height: animatedHeight.interpolate({
+                  inputRange: [40, screenHeight * 0.5],
+                  outputRange: [40, screenHeight * 0.5],
+                  extrapolate: "clamp",
+                }),
+              },
+            ]}
+            {...panResponder.panHandlers}
+          >
+            <View style={styles.handle} />
+            <Grid items={objects} onSelect={handleObjectSelect} />
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Type your text here..."
+                value={textInput}
+                onChangeText={setTextInput}
+              />
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={handleTextSubmit}
+              >
+                <Text style={styles.sendButtonText}>Send</Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
-        </PinchGestureHandler>
-        <Animated.View
-          style={[
-            styles.scrollContainer,
-            {
-              height: animatedHeight.interpolate({
-                inputRange: [40, screenHeight * 0.5],
-                outputRange: [40, screenHeight * 0.5],
-                extrapolate: "clamp",
-              }),
-            },
-          ]}
-          {...panResponder.panHandlers}
-        >
-          <View style={styles.handle} />
-          <Grid items={objects} onSelect={handleObjectSelect} />
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Type your text here..."
-              value={textInput}
-              onChangeText={setTextInput}
-            />
-            <TouchableOpacity
-              style={styles.sendButton}
-              onPress={handleTextSubmit}
-            >
-              <Text style={styles.sendButtonText}>Send</Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </View>
-    </GestureHandlerRootView>
+        </View>
+      </GestureHandlerRootView>
+    </RecoilRoot>
   );
 };
 

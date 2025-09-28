@@ -1,0 +1,91 @@
+import { StyleSheet } from "react-native";
+
+const styles = StyleSheet.create({
+  mainView: {
+    flex: 1,
+  },
+  scrollContainer: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    overflow: "hidden",
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  listItem: {
+    flex: 1,
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 15,
+    margin: 10,
+    backgroundColor: "#ffffff",
+    borderRadius: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  listItemText: {
+    marginTop: 10,
+    fontSize: 16,
+    textAlign: "center",
+    fontWeight: "bold",
+    color: "#333",
+  },
+  listItemImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+  },
+  handle: {
+    width: 50,
+    height: 5,
+    backgroundColor: "#ccc",
+    borderRadius: 2.5,
+    alignSelf: "center",
+    marginVertical: 10,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#ddd",
+  },
+  textInput: {
+    color: "#190be6ff",
+    flex: 1,
+    height: 40,
+    borderColor: "#ddd",
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginRight: 10,
+  },
+  sendButton: {
+    height: 40,
+    paddingHorizontal: 20,
+    backgroundColor: "#6200EE",
+    borderRadius: 5,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sendButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});
+
+export default styles;

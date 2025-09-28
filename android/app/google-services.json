@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "816594107270",
+    "project_id": "lookhere-8e2fa",
+    "storage_bucket": "lookhere-8e2fa.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:816594107270:android:b5ece4d67a684094c50a07",
+        "android_client_info": {
+          "package_name": "com.virostarterkit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAftq8Ar0oV1svei2FDhAXhNJzEM7dDbtg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
