@@ -15,6 +15,7 @@ export const userProfileState = atom({
     totalCoins: 0,
     level: 1,
     eventsJoined: 0,
+    joinedEvents: ["1", "5"],
     achievements: [],
   },
 });

@@ -47,8 +47,8 @@ export const styles = StyleSheet.create({
     color: "#7BDBFF",
   },
   statusExpired: {
-    backgroundColor: "#332",
-    color: "#AAA",
+    backgroundColor: "#3a0b0b",
+    color: "#E53935",
   },
   statusUpcoming: {
     backgroundColor: "#1f3d2a",
@@ -104,6 +104,9 @@ export const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",
+  },
+  participateButtonSubscribed: {
+    backgroundColor: "#E53935",
   },
   mapButton: {
     backgroundColor: "#FF9500",

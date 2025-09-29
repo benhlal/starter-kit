@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import { Event, FocusLocation } from "../../../types";
-import { useMapState } from "../../../state/recoil/hooks";
+import { useMapState, useUserProfile } from "../../../state/recoil/hooks";
+import BottomSheet from "../../Filters/Sheet/BottomSheet";
 import { styles } from "./EventItem.styles";
 
 interface EventItemProps {
@@ -16,6 +17,11 @@ export const EventItem: React.FC<EventItemProps> = ({
   onParticipate,
 }) => {
   const { setSelectedEvent } = useMapState();
+  const { userProfile } = useUserProfile();
+  const isParticipant = Array.isArray((userProfile as any)?.joinedEvents)
+    ? (userProfile as any).joinedEvents.includes(event.id)
+    : false;
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
   // Time status computation
   const now = Date.now();
   const startMs = useMemo(() => {
@@ -101,6 +107,11 @@ export const EventItem: React.FC<EventItemProps> = ({
   };
 
   const handleParticipatePress = () => {
+    if (isParticipant) {
+      // open unsubscribe confirm
+      setConfirmOpen(true);
+      return;
+    }
     if (onParticipate) {
       onParticipate(event);
     }
@@ -135,8 +146,8 @@ export const EventItem: React.FC<EventItemProps> = ({
               statusType === "ongoing"
                 ? [styles.statusOngoing, styles.statusRight]
                 : statusType === "expired"
-                ? styles.statusExpired
-                : styles.statusUpcoming,
+                ? [styles.statusExpired, styles.statusRight]
+                : [styles.statusUpcoming, styles.statusRight],
             ]}
           >
             {statusLabel}
@@ -176,16 +187,70 @@ export const EventItem: React.FC<EventItemProps> = ({
       <View style={styles.actionsRow}>
         {!isExpired ? (
           <TouchableOpacity
-            style={styles.participateButton}
+            style={[
+              styles.participateButton,
+              isParticipant && styles.participateButtonSubscribed,
+            ]}
             onPress={handleParticipatePress}
           >
-            <Text style={styles.participateButtonText}>Participate</Text>
+            <Text style={styles.participateButtonText}>
+              {isParticipant ? "Subscribed" : "Participate"}
+            </Text>
           </TouchableOpacity>
         ) : null}
         <TouchableOpacity style={styles.mapButton} onPress={handleMapPress}>
           <Text style={styles.mapButtonText}>View on Map</Text>
         </TouchableOpacity>
       </View>
+      {/* Unsubscribe confirm */}
+      <BottomSheet
+        visible={confirmOpen}
+        title={"Unsubscribe"}
+        onClose={() => setConfirmOpen(false)}
+        maxHeightPercent={0.3}
+      >
+        <Text style={confirmStyles.message}>
+          Do you want to unsubscribe from this event?
+        </Text>
+        <View style={confirmStyles.row}>
+          <TouchableOpacity
+            style={[confirmStyles.btn, confirmStyles.btnCancel]}
+            onPress={() => setConfirmOpen(false)}
+          >
+            <Text style={confirmStyles.btnText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[confirmStyles.btn, confirmStyles.btnDanger]}
+            onPress={() => {
+              // NOTE: In real app, update backend/profile. Demo: just close.
+              setConfirmOpen(false);
+            }}
+          >
+            <Text style={confirmStyles.btnText}>Unsubscribe</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
     </View>
   );
+};
+
+const confirmStyles = {
+  message: { color: "#EDEDED", marginBottom: 12 } as const,
+  row: { flexDirection: "row" as const, columnGap: 12 } as const,
+  btn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  } as const,
+  btnCancel: {
+    backgroundColor: "#1C1C1C",
+    borderWidth: 1,
+    borderColor: "#373737",
+  },
+  btnDanger: {
+    backgroundColor: "#E53935",
+  },
+  btnText: { color: "#FFFFFF", fontWeight: "700" as const },
 };

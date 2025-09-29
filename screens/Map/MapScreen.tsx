@@ -7,7 +7,11 @@ import {
   TouchableOpacity,
 } from "react-native";
 import MapView, { PROVIDER_GOOGLE, Marker, Region } from "react-native-maps";
-import { useEventLocations, useMapState } from "../../state/recoil/hooks";
+import {
+  useEventLocations,
+  useMapState,
+  useUserProfile,
+} from "../../state/recoil/hooks";
 import { EventLocation } from "../../types";
 // Generate random coins around current location
 const generateRandomCoins = (
@@ -90,7 +94,10 @@ const MapScreen: React.FC<{
   });
   const { eventLocations, fetchEventLocations } = useEventLocations();
   const { selectedEvent } = useMapState();
-  const isParticipant = false; // Placeholder: real participant check when profile includes joined events
+  const { userProfile } = useUserProfile();
+  const isParticipant = Array.isArray((userProfile as any)?.joinedEvents)
+    ? (userProfile as any).joinedEvents.includes(selectedEvent?.id || "")
+    : false; // Placeholder: real participant check when profile includes joined events
 
   useEffect(() => {
     fetchEventLocations();
