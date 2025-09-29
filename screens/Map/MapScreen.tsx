@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
 } from "react-native";
 import MapView, { PROVIDER_GOOGLE, Marker, Region } from "react-native-maps";
+import { useEventLocations } from "../../state/recoil/hooks";
+import { EventLocation } from "../../types";
 // Generate random coins around current location
 const generateRandomCoins = (
   centerLat: number,
@@ -39,43 +41,7 @@ const londonCoins = generateRandomCoins(51.5074, -0.1278, 25, "london");
 
 // Combine all coins
 const randomCoins = [...parisCoins, ...londonCoins];
-const eventLocations = [
-  {
-    id: "1",
-    title: "Total Prize",
-    description: "€1200 • 532 subscribers",
-    coordinate: { latitude: 48.8566, longitude: 2.3522 },
-    coins: 120,
-  },
-  {
-    id: "2",
-    title: "New York Central Park Hunt",
-    description: "€950 • 420 subscribers",
-    coordinate: { latitude: 40.7829, longitude: -73.9654 },
-    coins: 95,
-  },
-  {
-    id: "3",
-    title: "Tokyo Night Run",
-    description: "¥150,000 • 300 subscribers",
-    coordinate: { latitude: 35.6762, longitude: 139.6503 },
-    coins: 150,
-  },
-  {
-    id: "4",
-    title: "Sydney Opera Adventure",
-    description: "AU$2,100 • 210 subscribers",
-    coordinate: { latitude: -33.8568, longitude: 151.2153 },
-    coins: 210,
-  },
-  {
-    id: "5",
-    title: "London Bridge Quest",
-    description: "£1,300 • 410 subscribers",
-    coordinate: { latitude: 51.5074, longitude: -0.1278 },
-    coins: 130,
-  },
-];
+// Event locations come from state (Mock or Firebase)
 
 const getaroundMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#181a20" }] },
@@ -122,6 +88,11 @@ const MapScreen: React.FC<{
     latitudeDelta: 0.1,
     longitudeDelta: 0.1,
   });
+  const { eventLocations, fetchEventLocations } = useEventLocations();
+
+  useEffect(() => {
+    fetchEventLocations();
+  }, [fetchEventLocations]);
 
   const handleMarkerPress = (
     markerId: string,
@@ -184,16 +155,18 @@ const MapScreen: React.FC<{
       mapRef.current.animateToRegion(focusRegion, 1500);
 
       // Find and select the marker
-      const eventMarker = eventLocations.find(
-        (loc) =>
-          Math.abs(loc.coordinate.latitude - focusLocation.latitude) < 0.01 &&
-          Math.abs(loc.coordinate.longitude - focusLocation.longitude) < 0.01
-      );
+      const eventMarker = eventLocations.find((loc: EventLocation) => {
+        const coord = loc.coordinate ?? loc.location;
+        return (
+          Math.abs(coord.latitude - focusLocation.latitude) < 0.01 &&
+          Math.abs(coord.longitude - focusLocation.longitude) < 0.01
+        );
+      });
       if (eventMarker) {
         setSelectedMarker(eventMarker.id);
       }
     }
-  }, [focusLocation]);
+  }, [focusLocation, eventLocations]);
 
   return (
     <View style={styles.container}>
@@ -214,11 +187,16 @@ const MapScreen: React.FC<{
         showsScale={false}
       >
         {/* Event location markers */}
-        {eventLocations.map((location) => (
+        {eventLocations.map((location: EventLocation) => (
           <Marker
             key={location.id}
-            coordinate={location.coordinate}
-            onPress={() => handleMarkerPress(location.id, location.coordinate)}
+            coordinate={location.coordinate ?? location.location}
+            onPress={() =>
+              handleMarkerPress(
+                location.id,
+                location.coordinate ?? location.location
+              )
+            }
           >
             <View
               style={[
@@ -292,22 +270,39 @@ const MapScreen: React.FC<{
         <View style={styles.markerInfo}>
           {(() => {
             const selected = eventLocations.find(
-              (loc) => loc.id === selectedMarker
+              (loc: EventLocation) => loc.id === selectedMarker
             );
             const selectedCoin = randomCoins.find(
               (coin) => coin.id === selectedMarker
             );
 
             if (selected) {
+              const radius = selected.radius;
+              const interaction = selected.interactionType;
+              const rewards = selected.rewards;
               return (
                 <>
                   <Text style={styles.infoTitle}>{selected.title}</Text>
-                  <Text style={styles.infoDescription}>
-                    {selected.description}
+                  {selected.description ? (
+                    <Text style={styles.infoDescription}>
+                      {selected.description}
+                    </Text>
+                  ) : null}
+                  {typeof (selected as any).coins !== "undefined" && (
+                    <Text style={styles.infoCoins}>
+                      Event Coins: 💰{(selected as any).coins}
+                    </Text>
+                  )}
+                  <Text style={styles.infoMeta}>• Type: {selected.type}</Text>
+                  <Text style={styles.infoMeta}>• Radius: {radius}m</Text>
+                  <Text style={styles.infoMeta}>
+                    • Interaction: {interaction}
                   </Text>
-                  <Text style={styles.infoCoins}>
-                    Event Coins: 💰{selected.coins}
-                  </Text>
+                  {rewards && (
+                    <Text style={styles.infoMeta}>
+                      • Rewards: {rewards.coins} coins, {rewards.experience} XP
+                    </Text>
+                  )}
                 </>
               );
             } else if (selectedCoin) {
@@ -542,10 +537,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  infoMeta: {
+    color: "#bbb",
+    fontSize: 12,
+    marginTop: 4,
+  },
   // Floating button
   floatingButton: {
     position: "absolute",
-    bottom: 80, // Lower position
+    bottom: 30, // Lower position
     alignSelf: "center",
     backgroundColor: "rgba(123, 63, 228, 0.8)", // More transparent
     paddingHorizontal: 24,

@@ -136,8 +136,8 @@ export const events: Event[] = [
     organizer: { id: "org2", name: "NYC Explorers" },
     tags: ["park", "nature", "community"],
     image:
-      "https://images.pexels.com/photos/462118/pexels-photo-462118.jpeg?auto=compress&w=600",
-    img: "https://images.pexels.com/photos/462118/pexels-photo-462118.jpeg?auto=compress&w=600", // Legacy support
+      "https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&w=600",
+    img: "https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&w=600", // Legacy support
     rewards: { coins: 950, experience: 400 },
     visibility: "public",
     // Legacy fields
@@ -234,6 +234,70 @@ export const events: Event[] = [
     balance: "Total Balance: £1,300",
     subscribers: "410 subscribers",
     distance: "2.8 km",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "6",
+    title: "Marrakesh Medina Hunt",
+    name: "Marrakesh Medina Hunt", // Legacy support
+    description:
+      "Navigate the vibrant souks and historic alleys of Marrakesh's Medina.",
+    type: "treasure-hunt",
+    status: "active",
+    location: {
+      latitude: 31.6295,
+      longitude: -7.9811,
+      address: "Marrakesh, Morocco",
+    },
+    coordinate: { latitude: 31.6295, longitude: -7.9811 }, // Legacy support
+    startDate: new Date().toISOString(),
+    endDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
+    currentParticipants: 240,
+    participants: [],
+    organizer: { id: "org6", name: "Medina Masters" },
+    tags: ["market", "heritage", "exploration"],
+    image:
+      "https://images.pexels.com/photos/239520/pexels-photo-239520.jpeg?auto=compress&w=600",
+    img: "https://images.pexels.com/photos/239520/pexels-photo-239520.jpeg?auto=compress&w=600", // Legacy support
+    rewards: { coins: 800, experience: 350 },
+    visibility: "public",
+    // Legacy fields
+    balance: "Total Balance: 800 MAD",
+    subscribers: "240 subscribers",
+    distance: "6 km",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "7",
+    title: "Casablanca Finance City Challenge",
+    name: "Casablanca Finance City Challenge", // Legacy support
+    description:
+      "Race through the modern skyline around Casablanca Finance City.",
+    type: "community-event",
+    status: "active",
+    location: {
+      latitude: 33.5731,
+      longitude: -7.5898,
+      address: "Casablanca, Morocco",
+    },
+    coordinate: { latitude: 33.5731, longitude: -7.5898 }, // Legacy support
+    startDate: new Date().toISOString(),
+    endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(),
+    currentParticipants: 520,
+    participants: [],
+    organizer: { id: "org7", name: "Casablanca Crew" },
+    tags: ["city", "modern", "community"],
+    image:
+      "https://images.pexels.com/photos/373912/pexels-photo-373912.jpeg?auto=compress&w=600",
+    img: "https://images.pexels.com/photos/373912/pexels-photo-373912.jpeg?auto=compress&w=600", // Legacy support
+    rewards: { coins: 1400, experience: 500 },
+    visibility: "public",
+    // Legacy fields
+    balance: "Total Balance: DH 1,400",
+    subscribers: "520 subscribers",
+    distance: "7.2 km",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
