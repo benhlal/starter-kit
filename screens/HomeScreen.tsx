@@ -1,17 +1,14 @@
 import React, { useState } from "react";
-import { View, StyleSheet, Animated, Dimensions } from "react-native";
+import { View, StyleSheet } from "react-native";
 import ProfileScreen from "./ProfileScreen";
 import EventScreen from "./EventScreen";
 import MapScreen from "./MapScreen";
 import BottomNav from "../components/BottomNav/BottomNav";
 
-const { width } = Dimensions.get('window');
-
 const HomeScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"Home" | "Account">("Home");
   const [showMap, setShowMap] = useState(false);
   const [shouldRenderMap, setShouldRenderMap] = useState(false);
-  const slideAnim = useState(new Animated.Value(width))[0]; // Start off-screen to the right
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab as "Home" | "Account");
@@ -19,33 +16,22 @@ const HomeScreen: React.FC = () => {
     if (showMap) {
       setShowMap(false);
       setShouldRenderMap(false);
-      slideAnim.setValue(width); // Reset slide position
     }
   };
 
   const handleMapToggle = () => {
     if (!showMap) {
-      // Pre-render map off-screen first, then slide in
+      // Pre-render map off-screen first, then show instantly
       setShouldRenderMap(true);
       setTimeout(() => {
         setShowMap(true);
-        Animated.timing(slideAnim, {
-          toValue: 0, // Slide to normal position
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
       }, 100); // Small delay to let map render off-screen
     } else {
-      // Hide map: slide out to right
+      // Hide map instantly, then unmount
       setShowMap(false);
-      Animated.timing(slideAnim, {
-        toValue: width, // Slide off-screen to the right
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => {
-        setShouldRenderMap(false); // Unmount after animation
-        slideAnim.setValue(width); // Reset position for next time
-      });
+      setTimeout(() => {
+        setShouldRenderMap(false);
+      }, 50);
     }
   };
 
@@ -58,18 +44,18 @@ const HomeScreen: React.FC = () => {
         return (
           <View style={styles.content}>
             <EventScreen setActiveTab={handleMapToggle} />
-            {/* Pre-render map off-screen, then slide in */}
+            {/* Pre-render off-screen, then show instantly without animation */}
             {shouldRenderMap && (
-              <Animated.View style={[
+              <View style={[
                 styles.mapOverlay,
                 {
-                  transform: [{ translateX: slideAnim }],
-                  // Hide interaction until slide-in starts
+                  // Hide off-screen initially, then show in place
+                  opacity: showMap ? 1 : 0,
                   pointerEvents: showMap ? 'auto' : 'none'
                 }
               ]}>
                 <MapScreen setActiveTab={handleMapToggle} />
-              </Animated.View>
+              </View>
             )}
           </View>
         );

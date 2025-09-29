@@ -98,9 +98,9 @@ const styles = StyleSheet.create({
   distance: { color: "#7B3FE4", fontSize: 14, marginTop: 4 },
   floatingButton: {
     position: "absolute",
-    bottom: 120, // Same position as MapScreen
+    bottom: 80, // Lower position to match MapScreen
     alignSelf: "center",
-    backgroundColor: "#7B3FE4",
+    backgroundColor: "rgba(123, 63, 228, 0.8)", // More transparent
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 30,
