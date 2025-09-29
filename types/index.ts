@@ -279,6 +279,37 @@ export interface SearchFilters {
   status?: EventStatus[];
 }
 
+// UI Filters specific to the Getaround-like filter bar
+export type VehicleType =
+  | "any"
+  | "city"
+  | "suv"
+  | "van"
+  | "electric"
+  | "luxury";
+
+export type PickupMethod = "any" | "meet-owner" | "connect";
+
+export type FeatureKey =
+  | "child-seat"
+  | "gps"
+  | "air-conditioning"
+  | "bike-rack"
+  | "roof-box"
+  | "snow-tires"
+  | "bluetooth";
+
+export interface UiFilters {
+  pickupAt?: string; // ISO
+  returnAt?: string; // ISO
+  vehicleType: VehicleType;
+  pickupMethod: PickupMethod;
+  instantBooking: boolean;
+  seatsMin: number;
+  newCarsOnly: boolean;
+  features: FeatureKey[];
+}
+
 export interface SearchResult {
   events: Event[];
   coins: Coin[];

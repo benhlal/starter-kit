@@ -6,12 +6,12 @@ import {
   Animated,
   StyleSheet,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type FilterChip = {
   id: string;
   label: string;
   onPress?: () => void;
+  active?: boolean;
 };
 
 interface FloatingFiltersProps {
@@ -25,12 +25,9 @@ export const FloatingFilters: React.FC<FloatingFiltersProps> = ({
   visible,
   animatedValue,
 }) => {
-  const insets = useSafeAreaInsets();
   const containerStyle = [
     styles.container,
     visible ? styles.visible : styles.hidden,
-    // Nudge the bar down to avoid the very top of the screen/notch
-    { top: Math.max(8, insets.top + 8) },
   ] as any;
 
   const animatedStyle = animatedValue
@@ -56,11 +53,17 @@ export const FloatingFilters: React.FC<FloatingFiltersProps> = ({
         {chips.map((chip) => (
           <TouchableOpacity
             key={chip.id}
-            style={styles.chip}
+            style={[styles.chip, chip.active && styles.chipActive]}
             activeOpacity={0.8}
             onPress={chip.onPress}
           >
-            <Text style={styles.chipText}>{chip.label}</Text>
+            <Text
+              style={styles.chipText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {chip.label}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -71,7 +74,7 @@ export const FloatingFilters: React.FC<FloatingFiltersProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 8,
+    top: 40,
     left: 12,
     right: 12,
     zIndex: 20,
@@ -87,13 +90,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#1E1E1E",
-    borderRadius: 12,
+    width: "100%",
     padding: 8,
-    borderWidth: 1,
-    borderColor: "#2a2a2a",
   },
   chip: {
+    flex: 1,
+    minWidth: 0,
     backgroundColor: "#2A2A2A",
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -101,10 +103,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#3A3A3A",
     marginHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipActive: {
+    borderColor: "#A64DFF",
   },
   chipText: {
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "600",
+    textAlign: "center",
   },
 });

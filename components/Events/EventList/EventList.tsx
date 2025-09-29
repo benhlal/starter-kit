@@ -15,6 +15,7 @@ export interface EventListProps {
   onEventPress?: (event: Event) => void;
   onScrollDirectionChange?: (dir: "up" | "down") => void;
   topInset?: number; // padding to avoid overlay collisions (e.g., floating filters)
+  onParticipate?: (event: Event) => void;
 }
 
 export const EventList: React.FC<EventListProps> = ({
@@ -22,6 +23,7 @@ export const EventList: React.FC<EventListProps> = ({
   onEventPress,
   onScrollDirectionChange,
   topInset = 64,
+  onParticipate,
 }) => {
   const handleMapPress = (location: FocusLocation) => {
     if (onEventPress) {
@@ -53,7 +55,11 @@ export const EventList: React.FC<EventListProps> = ({
   };
 
   const renderItem: ListRenderItem<Event> = ({ item }) => (
-    <EventItem event={item} onMapPress={handleMapPress} />
+    <EventItem
+      event={item}
+      onMapPress={handleMapPress}
+      onParticipate={onParticipate}
+    />
   );
 
   return (

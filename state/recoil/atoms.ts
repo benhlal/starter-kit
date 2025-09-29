@@ -1,4 +1,5 @@
 import { atom } from "recoil";
+import { UiFilters } from "../../types";
 import { Event, EventLocation, Coin } from "../../types";
 
 // User profile state
@@ -83,4 +84,18 @@ export const selectedEventState = atom<Event | null>({
 export const mapFocusLocationState = atom({
   key: "mapFocusLocationState",
   default: null,
+});
+
+export const uiFiltersState = atom<UiFilters>({
+  key: "uiFiltersState",
+  default: {
+    pickupAt: undefined,
+    returnAt: undefined,
+    vehicleType: "any",
+    pickupMethod: "any",
+    instantBooking: false,
+    seatsMin: 2,
+    newCarsOnly: false,
+    features: [],
+  },
 });
