@@ -14,33 +14,32 @@ const HomeContent: React.FC = () => (
 const HomeScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "Home" | "Search" | "Profile" | "Map" | "EVENTS" | "AR"
-  >("Home");
+  >("EVENTS");
 
-  let ScreenComponent: React.FC;
-  switch (activeTab) {
-    // ...existing code...
-    case "Profile":
-      ScreenComponent = ProfileScreen;
-      break;
-    case "Map":
-      ScreenComponent = MapScreen;
-      break;
-    case "EVENTS":
-      ScreenComponent = EventScreen;
-      break;
-    case "AR":
-      ScreenComponent = ARScreen;
-      break;
-    case "Home":
-    default:
-      ScreenComponent = HomeContent;
-      break;
-  }
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as "Home" | "Search" | "Profile" | "Map" | "EVENTS" | "AR");
+  };
+
+  const renderCurrentScreen = () => {
+    switch (activeTab) {
+      case "Profile":
+        return <ProfileScreen />;
+      case "Map":
+        return <MapScreen setActiveTab={handleTabChange} />;
+      case "EVENTS":
+        return <EventScreen setActiveTab={handleTabChange} />;
+      case "AR":
+        return <ARScreen />;
+      case "Home":
+      default:
+        return <HomeContent />;
+    }
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <ScreenComponent />
+        {renderCurrentScreen()}
       </View>
       <BottomNav active={activeTab} setActiveTab={setActiveTab} />
     </View>

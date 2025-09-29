@@ -7,7 +7,6 @@ import {
   TouchableWithoutFeedback,
   StyleSheet,
 } from "react-native";
-import BottomNav from "../components/BottomNav/BottomNav";
 
 const events = [
   {
@@ -52,7 +51,7 @@ const events = [
   },
 ];
 
-const EventScreen: React.FC = () => {
+const EventScreen: React.FC<{ setActiveTab?: (tab: string) => void }> = ({ setActiveTab }) => {
   const renderItem = ({ item }: any) => (
     <View style={styles.card}>
       <Image source={{ uri: item.img }} style={styles.image} />
@@ -72,20 +71,17 @@ const EventScreen: React.FC = () => {
         contentContainerStyle={{ paddingBottom: 80 }}
       />
 
-      {/* Floating Map Button (above BottomNav, no flash effect) */}
-      <TouchableWithoutFeedback>
+      {/* Floating Map Button */}
+      <TouchableWithoutFeedback onPress={() => setActiveTab && setActiveTab("Map")}>
         <View
           style={[
             styles.floatingButton,
-            { opacity: 0.8, zIndex: 10, bottom: 145 },
+            { opacity: 0.8, zIndex: 10, bottom: 95 },
           ]}
         >
           <Text style={styles.floatingButtonText}>📍 Map</Text>
         </View>
       </TouchableWithoutFeedback>
-
-      {/* Shared Bottom Navigation */}
-      <BottomNav active="EVENTS" setActiveTab={() => {}} />
     </View>
   );
 };

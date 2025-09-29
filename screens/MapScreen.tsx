@@ -1,6 +1,5 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableWithoutFeedback } from "react-native";
-import BottomNav from "../components/BottomNav/BottomNav";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 // ...existing code...
 
@@ -21,11 +20,7 @@ const getaroundMapStyle = [
   },
 ];
 
-const MapScreen: React.FC = () => {
-  // Local tab state for consistency with HomeScreen
-  const [activeTab, setActiveTab] = React.useState<
-    "Home" | "Search" | "Profile" | "Map" | "EVENTS" | "AR"
-  >("Map");
+const MapScreen: React.FC<{ setActiveTab?: (tab: string) => void }> = ({ setActiveTab }) => {
 
   return (
     <View style={styles.container}>
@@ -42,15 +37,12 @@ const MapScreen: React.FC = () => {
         customMapStyle={getaroundMapStyle}
       />
 
-      {/* Floating List Button (switch to Home/List view) */}
-      <TouchableWithoutFeedback onPress={() => setActiveTab("Home")}>
+      {/* Floating List Button (switch to Events view) */}
+      <TouchableWithoutFeedback onPress={() => setActiveTab && setActiveTab("EVENTS")}>
         <View style={styles.floatingButton}>
           <Text style={styles.floatingButtonText}>≡ List</Text>
         </View>
       </TouchableWithoutFeedback>
-
-      {/* Shared Bottom Navigation */}
-      <BottomNav active={activeTab} setActiveTab={setActiveTab} />
     </View>
   );
 };
@@ -66,7 +58,7 @@ const styles = StyleSheet.create({
   },
   floatingButton: {
     position: "absolute",
-    bottom: 70, // sits above BottomNav
+    bottom: 95, // sits above the main BottomNav
     alignSelf: "center",
     backgroundColor: "#7B3FE4",
     paddingHorizontal: 24,
