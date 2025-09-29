@@ -7,17 +7,45 @@ export const generateRandomCoins = (
   prefix: string
 ): Coin[] => {
   const coins: Coin[] = [];
+  const coinTypes: Array<"standard" | "premium" | "rare"> = [
+    "standard",
+    "premium",
+    "rare",
+  ];
+  const coinRarities: Array<"common" | "uncommon" | "rare"> = [
+    "common",
+    "uncommon",
+    "rare",
+  ];
+
   for (let i = 0; i < count; i++) {
     // Generate random offset within ~5km radius
     const latOffset = (Math.random() - 0.5) * 0.09; // ~5km (0.045 degrees ≈ 5km)
     const lngOffset = (Math.random() - 0.5) * 0.09; // ~5km
+    const latitude = centerLat + latOffset;
+    const longitude = centerLng + lngOffset;
+
     coins.push({
       id: `${prefix}-coin-${i}`, // Use prefix to make IDs unique
-      coordinate: {
-        latitude: centerLat + latOffset,
-        longitude: centerLng + lngOffset,
-      },
+      name: `${prefix} Coin ${i + 1}`,
+      description: `A randomly placed coin in ${prefix}`,
       value: Math.floor(Math.random() * 50) + 10, // 10-60 coins
+      type: coinTypes[Math.floor(Math.random() * coinTypes.length)],
+      rarity: coinRarities[Math.floor(Math.random() * coinRarities.length)],
+      location: {
+        latitude,
+        longitude,
+      },
+      coordinate: {
+        // Legacy support
+        latitude,
+        longitude,
+      },
+      region: prefix,
+      collectible: true,
+      collected: Math.random() < 0.2, // 20% already collected
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     });
   }
   return coins;

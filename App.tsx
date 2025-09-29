@@ -1,6 +1,13 @@
 import React from "react";
-import HomeScreen from "./screens/HomeScreen";
+import { RecoilRoot } from "recoil";
+import HomeScreen from "./screens/Home/HomeScreen";
 
-const App = () => <HomeScreen />;
+const App: React.FC = () => {
+  return (
+    <RecoilRoot>
+      <HomeScreen />
+    </RecoilRoot>
+  );
+};
 
 export default App;
