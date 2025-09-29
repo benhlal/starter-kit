@@ -20,6 +20,7 @@ import { VehicleTypeModal } from "../../components/Filters/Modal/VehicleTypeModa
 import { PickupMethodModal } from "../../components/Filters/Modal/PickupMethodModal";
 import { MoreFiltersModal } from "../../components/Filters/Modal/MoreFiltersModal";
 import BottomSheet from "../../components/Filters/Sheet/BottomSheet";
+import TopSearch from "../../components/Filters/TopSearch/TopSearch";
 // import { styles } from "./EventScreen.styles"; // TODO: Use when implementing styled components
 
 interface EventScreenProps {
@@ -37,6 +38,11 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
     title: string;
     fee?: string;
   }>(null);
+  // Top search pills state
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [whenOpen, setWhenOpen] = useState(false);
+  const [locationLabel, setLocationLabel] = useState("Current location");
+  const [whenLabel, setWhenLabel] = useState("When?");
 
   const chips: FilterChip[] = useMemo(() => {
     const vehicleLabel =
@@ -120,6 +126,15 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
 
   return (
     <View style={screenStyles.container}>
+      {/* Top search pills overlay */}
+      <TopSearch
+        locationLabel={locationLabel}
+        whenLabel={whenLabel}
+        onPressLocation={() => setLocationOpen(true)}
+        onPressWhen={() => setWhenOpen(true)}
+        visible={filtersVisible}
+        animatedValue={filtersOpacity}
+      />
       {/* Floating Filters overlay */}
       <FloatingFilters
         chips={chips}
@@ -164,7 +179,7 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
         events={events}
         onEventPress={handleEventPress}
         onScrollDirectionChange={(dir) => setVisible(dir === "up")}
-        topInset={64}
+        topInset={140}
         onParticipate={handleParticipate}
       />
       <FloatingButton text="📍 Map" onPress={handleFloatingButtonPress} />
@@ -194,6 +209,98 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
             onPress={() => setConfirmOpen(null)}
           >
             <Text style={confirmStyles.btnText}>Confirm</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
+
+      {/* Location picker sheet */}
+      <BottomSheet
+        visible={locationOpen}
+        title="Location"
+        onClose={() => setLocationOpen(false)}
+        maxHeightPercent={0.45}
+      >
+        <View style={sheetStyles.list}>
+          <TouchableOpacity
+            style={sheetStyles.item}
+            onPress={() => {
+              setLocationLabel("Current location");
+              setLocationOpen(false);
+            }}
+          >
+            <Text style={sheetStyles.itemIcon}>📍</Text>
+            <Text style={sheetStyles.itemText}>Current location</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={sheetStyles.item}
+            onPress={() => {
+              setLocationLabel("Paris, France");
+              setLocationOpen(false);
+            }}
+          >
+            <Text style={sheetStyles.itemIcon}>🌆</Text>
+            <Text style={sheetStyles.itemText}>Paris, France</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={sheetStyles.item}
+            onPress={() => {
+              setLocationLabel("Choose on map…");
+              setLocationOpen(false);
+            }}
+          >
+            <Text style={sheetStyles.itemIcon}>🗺️</Text>
+            <Text style={sheetStyles.itemText}>Choose on map…</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
+
+      {/* When picker sheet */}
+      <BottomSheet
+        visible={whenOpen}
+        title="When"
+        onClose={() => setWhenOpen(false)}
+        maxHeightPercent={0.5}
+      >
+        <View style={sheetStyles.list}>
+          <TouchableOpacity
+            style={sheetStyles.item}
+            onPress={() => {
+              setWhenLabel("Today");
+              setWhenOpen(false);
+            }}
+          >
+            <Text style={sheetStyles.itemIcon}>📅</Text>
+            <Text style={sheetStyles.itemText}>Today</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={sheetStyles.item}
+            onPress={() => {
+              setWhenLabel("Tomorrow");
+              setWhenOpen(false);
+            }}
+          >
+            <Text style={sheetStyles.itemIcon}>📅</Text>
+            <Text style={sheetStyles.itemText}>Tomorrow</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={sheetStyles.item}
+            onPress={() => {
+              setWhenLabel("This weekend");
+              setWhenOpen(false);
+            }}
+          >
+            <Text style={sheetStyles.itemIcon}>🎉</Text>
+            <Text style={sheetStyles.itemText}>This weekend</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={sheetStyles.item}
+            onPress={() => {
+              setWhenLabel("Next week");
+              setWhenOpen(false);
+            }}
+          >
+            <Text style={sheetStyles.itemIcon}>🗓️</Text>
+            <Text style={sheetStyles.itemText}>Next week</Text>
           </TouchableOpacity>
         </View>
       </BottomSheet>
@@ -228,4 +335,20 @@ const confirmStyles = StyleSheet.create({
   },
   btnConfirm: { backgroundColor: "#D946EF" },
   btnText: { color: "#FFFFFF", fontWeight: "700" },
+});
+
+const sheetStyles = StyleSheet.create({
+  list: { gap: 8 },
+  item: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1C1C1C",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  itemIcon: { width: 22, marginRight: 8, color: "#D946EF" },
+  itemText: { color: "#EDEDED", fontWeight: "700" },
 });

@@ -28,14 +28,22 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       <TouchableOpacity style={[styles.btn, styles.cancel]} onPress={onCancel}>
         <Text style={styles.btnText}>{cancelText}</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={[styles.btn, styles.confirm]} onPress={onConfirm}>
+      <TouchableOpacity
+        style={[styles.btn, styles.confirm]}
+        onPress={onConfirm}
+      >
         <Text style={styles.btnText}>{confirmText}</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <BottomSheet visible={visible} title={title} onClose={onCancel} footer={footer}>
+    <BottomSheet
+      visible={visible}
+      title={title}
+      onClose={onCancel}
+      footer={footer}
+    >
       {message ? <Text style={styles.message}>{message}</Text> : null}
       {feeLabel ? <Text style={styles.fee}>{feeLabel}</Text> : null}
     </BottomSheet>

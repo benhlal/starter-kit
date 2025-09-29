@@ -74,7 +74,7 @@ export const FloatingFilters: React.FC<FloatingFiltersProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 40,
+    top: 90,
     left: 12,
     right: 12,
     zIndex: 20,
