@@ -20,7 +20,7 @@ const getaroundMapStyle = [
   },
 ];
 
-const MapScreen: React.FC<{ setActiveTab?: (tab: string) => void }> = ({ setActiveTab }) => {
+const MapScreen: React.FC<{ setActiveTab?: () => void }> = ({ setActiveTab }) => {
 
   return (
     <View style={styles.container}>
@@ -38,7 +38,7 @@ const MapScreen: React.FC<{ setActiveTab?: (tab: string) => void }> = ({ setActi
       />
 
       {/* Floating List Button (switch to Events view) */}
-      <TouchableWithoutFeedback onPress={() => setActiveTab && setActiveTab("EVENTS")}>
+      <TouchableWithoutFeedback onPress={() => setActiveTab && setActiveTab()}>
         <View style={styles.floatingButton}>
           <Text style={styles.floatingButtonText}>≡ List</Text>
         </View>
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   },
   floatingButton: {
     position: "absolute",
-    bottom: 95, // sits above the main BottomNav
+    bottom: 120, // Higher position since it's an overlay
     alignSelf: "center",
     backgroundColor: "#7B3FE4",
     paddingHorizontal: 24,

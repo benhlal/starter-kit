@@ -3,78 +3,32 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 interface Props {
-  active?: "Home" | "Profile" | "AR" | "Map" | "EVENTS" | "Search";
-  setActiveTab: (
-    tab: "Home" | "Profile" | "AR" | "Map" | "EVENTS" | "Search"
-  ) => void;
+  active?: "Home" | "Account";
+  setActiveTab: (tab: "Home" | "Account") => void;
 }
 
 const BottomNav: React.FC<Props> = ({ active, setActiveTab }) => (
   <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
     <View style={styles.bottomNav}>
-      {/* Home tab */}
+      {/* Home tab (Events) */}
       <TouchableOpacity
         style={styles.navButton}
         onPress={() => setActiveTab("Home")}
       >
         <Text style={[styles.navText, active === "Home" && styles.activeText]}>
-          Home
+          HOME
         </Text>
       </TouchableOpacity>
 
-      {/* Search tab */}
+      {/* Account tab */}
       <TouchableOpacity
         style={styles.navButton}
-        onPress={() => setActiveTab("Search")}
+        onPress={() => setActiveTab("Account")}
       >
         <Text
-          style={[styles.navText, active === "Search" && styles.activeText]}
+          style={[styles.navText, active === "Account" && styles.activeText]}
         >
-          Search
-        </Text>
-      </TouchableOpacity>
-
-      {/* Profile tab */}
-      <TouchableOpacity
-        style={styles.navButton}
-        onPress={() => setActiveTab("Profile")}
-      >
-        <Text
-          style={[styles.navText, active === "Profile" && styles.activeText]}
-        >
-          Profile
-        </Text>
-      </TouchableOpacity>
-
-      {/* Map tab */}
-      <TouchableOpacity
-        style={styles.navButton}
-        onPress={() => setActiveTab("Map")}
-      >
-        <Text style={[styles.navText, active === "Map" && styles.activeText]}>
-          Map
-        </Text>
-      </TouchableOpacity>
-
-      {/* EVENTS tab */}
-      <TouchableOpacity
-        style={styles.navButton}
-        onPress={() => setActiveTab("EVENTS")}
-      >
-        <Text
-          style={[styles.navText, active === "EVENTS" && styles.activeText]}
-        >
-          Events
-        </Text>
-      </TouchableOpacity>
-
-      {/* AR tab */}
-      <TouchableOpacity
-        style={styles.navButton}
-        onPress={() => setActiveTab("AR")}
-      >
-        <Text style={[styles.navText, active === "AR" && styles.activeText]}>
-          AR
+          ACCOUNT
         </Text>
       </TouchableOpacity>
     </View>

@@ -1,38 +1,44 @@
 import React, { useState } from "react";
 import { View, StyleSheet } from "react-native";
-// ...existing code...
 import ProfileScreen from "./ProfileScreen";
-import ARScreen from "./ARScreen";
 import EventScreen from "./EventScreen";
 import MapScreen from "./MapScreen";
 import BottomNav from "../components/BottomNav/BottomNav";
 
-const HomeContent: React.FC = () => (
-  <View style={styles.content}>{/* Home tab content goes here */}</View>
-);
-
 const HomeScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<
-    "Home" | "Search" | "Profile" | "Map" | "EVENTS" | "AR"
-  >("EVENTS");
+  const [activeTab, setActiveTab] = useState<"Home" | "Account">("Home");
+  const [showMap, setShowMap] = useState(false);
 
   const handleTabChange = (tab: string) => {
-    setActiveTab(tab as "Home" | "Search" | "Profile" | "Map" | "EVENTS" | "AR");
+    setActiveTab(tab as "Home" | "Account");
+    setShowMap(false); // Hide map when switching main tabs
+  };
+
+  const handleMapToggle = () => {
+    setShowMap(!showMap);
   };
 
   const renderCurrentScreen = () => {
     switch (activeTab) {
-      case "Profile":
+      case "Account":
         return <ProfileScreen />;
-      case "Map":
-        return <MapScreen setActiveTab={handleTabChange} />;
-      case "EVENTS":
-        return <EventScreen setActiveTab={handleTabChange} />;
-      case "AR":
-        return <ARScreen />;
       case "Home":
       default:
-        return <HomeContent />;
+        return (
+          <View style={styles.content}>
+            <EventScreen setActiveTab={handleMapToggle} />
+            {/* Map is always rendered but hidden/shown with opacity */}
+            <View style={[
+              styles.mapOverlay, 
+              { 
+                opacity: showMap ? 1 : 0,
+                pointerEvents: showMap ? 'auto' : 'none'
+              }
+            ]}>
+              <MapScreen setActiveTab={handleMapToggle} />
+            </View>
+          </View>
+        );
     }
   };
 
@@ -41,7 +47,7 @@ const HomeScreen: React.FC = () => {
       <View style={styles.content}>
         {renderCurrentScreen()}
       </View>
-      <BottomNav active={activeTab} setActiveTab={setActiveTab} />
+      <BottomNav active={activeTab} setActiveTab={handleTabChange} />
     </View>
   );
 };
@@ -53,6 +59,14 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  mapOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
   },
 });
 

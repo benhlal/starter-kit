@@ -51,7 +51,7 @@ const events = [
   },
 ];
 
-const EventScreen: React.FC<{ setActiveTab?: (tab: string) => void }> = ({ setActiveTab }) => {
+const EventScreen: React.FC<{ setActiveTab?: () => void }> = ({ setActiveTab }) => {
   const renderItem = ({ item }: any) => (
     <View style={styles.card}>
       <Image source={{ uri: item.img }} style={styles.image} />
@@ -72,7 +72,7 @@ const EventScreen: React.FC<{ setActiveTab?: (tab: string) => void }> = ({ setAc
       />
 
       {/* Floating Map Button */}
-      <TouchableWithoutFeedback onPress={() => setActiveTab && setActiveTab("Map")}>
+      <TouchableWithoutFeedback onPress={() => setActiveTab && setActiveTab()}>
         <View
           style={[
             styles.floatingButton,
