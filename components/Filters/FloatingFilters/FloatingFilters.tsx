@@ -1,4 +1,3 @@
-/* eslint-disable linebreak-style */
 import React from "react";
 import {
   View,
@@ -7,6 +6,7 @@ import {
   Animated,
   StyleSheet,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type FilterChip = {
   id: string;
@@ -25,9 +25,12 @@ export const FloatingFilters: React.FC<FloatingFiltersProps> = ({
   visible,
   animatedValue,
 }) => {
+  const insets = useSafeAreaInsets();
   const containerStyle = [
     styles.container,
     visible ? styles.visible : styles.hidden,
+    // Nudge the bar down to avoid the very top of the screen/notch
+    { top: Math.max(8, insets.top + 8) },
   ] as any;
 
   const animatedStyle = animatedValue
