@@ -9,7 +9,9 @@ const HomeScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"Home" | "Account">("Home");
   const [showMap, setShowMap] = useState(false);
   const [shouldRenderMap, setShouldRenderMap] = useState(false);
-  const [focusLocation, setFocusLocation] = useState<{ latitude: number; longitude: number; title: string } | undefined>();
+  const [focusLocation, setFocusLocation] = useState<
+    { latitude: number; longitude: number; title: string } | undefined
+  >();
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab as "Home" | "Account");
@@ -20,7 +22,11 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  const handleMapToggle = (location?: { latitude: number; longitude: number; title: string }) => {
+  const handleMapToggle = (location?: {
+    latitude: number;
+    longitude: number;
+    title: string;
+  }) => {
     if (!showMap) {
       // Set focus location if provided
       if (location) {
@@ -52,15 +58,20 @@ const HomeScreen: React.FC = () => {
             <EventScreen setActiveTab={handleMapToggle} />
             {/* Pre-render off-screen, then show instantly without animation */}
             {shouldRenderMap && (
-              <View style={[
-                styles.mapOverlay,
-                {
-                  // Hide off-screen initially, then show in place
-                  opacity: showMap ? 1 : 0,
-                  pointerEvents: showMap ? 'auto' : 'none'
-                }
-              ]}>
-                <MapScreen setActiveTab={handleMapToggle} focusLocation={focusLocation} />
+              <View
+                style={[
+                  styles.mapOverlay,
+                  {
+                    // Hide off-screen initially, then show in place
+                    opacity: showMap ? 1 : 0,
+                    pointerEvents: showMap ? "auto" : "none",
+                  },
+                ]}
+              >
+                <MapScreen
+                  setActiveTab={handleMapToggle}
+                  focusLocation={focusLocation}
+                />
               </View>
             )}
           </View>
@@ -70,9 +81,7 @@ const HomeScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        {renderCurrentScreen()}
-      </View>
+      <View style={styles.content}>{renderCurrentScreen()}</View>
       <BottomNav active={activeTab} setActiveTab={handleTabChange} />
     </View>
   );

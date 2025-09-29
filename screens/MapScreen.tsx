@@ -1,8 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableWithoutFeedback, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableWithoutFeedback,
+  TouchableOpacity,
+} from "react-native";
 import MapView, { PROVIDER_GOOGLE, Marker, Region } from "react-native-maps";
 // Generate random coins around current location
-const generateRandomCoins = (centerLat: number, centerLng: number, count: number = 25, prefix: string) => {
+const generateRandomCoins = (
+  centerLat: number,
+  centerLng: number,
+  count: number = 25,
+  prefix: string
+) => {
   const coins = [];
   for (let i = 0; i < count; i++) {
     // Generate random offset within ~5km radius
@@ -37,7 +48,7 @@ const eventLocations = [
     coins: 120,
   },
   {
-    id: "2", 
+    id: "2",
     title: "New York Central Park Hunt",
     description: "€950 • 420 subscribers",
     coordinate: { latitude: 40.7829, longitude: -73.9654 },
@@ -45,7 +56,7 @@ const eventLocations = [
   },
   {
     id: "3",
-    title: "Tokyo Night Run", 
+    title: "Tokyo Night Run",
     description: "¥150,000 • 300 subscribers",
     coordinate: { latitude: 35.6762, longitude: 139.6503 },
     coins: 150,
@@ -60,7 +71,7 @@ const eventLocations = [
   {
     id: "5",
     title: "London Bridge Quest",
-    description: "£1,300 • 410 subscribers", 
+    description: "£1,300 • 410 subscribers",
     coordinate: { latitude: 51.5074, longitude: -0.1278 },
     coins: 130,
   },
@@ -99,7 +110,7 @@ const getaroundMapStyle = [
   },
 ];
 
-const MapScreen: React.FC<{ 
+const MapScreen: React.FC<{
   setActiveTab?: () => void;
   focusLocation?: { latitude: number; longitude: number; title: string };
 }> = ({ setActiveTab, focusLocation }) => {
@@ -112,14 +123,20 @@ const MapScreen: React.FC<{
     longitudeDelta: 0.1,
   });
 
-  const handleMarkerPress = (markerId: string, coordinate: { latitude: number; longitude: number }) => {
+  const handleMarkerPress = (
+    markerId: string,
+    coordinate: { latitude: number; longitude: number }
+  ) => {
     setSelectedMarker(markerId);
     // Zoom into the marker with smooth animation
-    mapRef.current?.animateToRegion({
-      ...coordinate,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
-    }, 1000);
+    mapRef.current?.animateToRegion(
+      {
+        ...coordinate,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      },
+      1000
+    );
   };
 
   const handleZoomIn = () => {
@@ -165,11 +182,12 @@ const MapScreen: React.FC<{
       };
       setRegion(focusRegion);
       mapRef.current.animateToRegion(focusRegion, 1500);
-      
+
       // Find and select the marker
-      const eventMarker = eventLocations.find(loc => 
-        Math.abs(loc.coordinate.latitude - focusLocation.latitude) < 0.01 &&
-        Math.abs(loc.coordinate.longitude - focusLocation.longitude) < 0.01
+      const eventMarker = eventLocations.find(
+        (loc) =>
+          Math.abs(loc.coordinate.latitude - focusLocation.latitude) < 0.01 &&
+          Math.abs(loc.coordinate.longitude - focusLocation.longitude) < 0.01
       );
       if (eventMarker) {
         setSelectedMarker(eventMarker.id);
@@ -202,17 +220,38 @@ const MapScreen: React.FC<{
             coordinate={location.coordinate}
             onPress={() => handleMarkerPress(location.id, location.coordinate)}
           >
-            <View style={[
-              location.title === "Total Prize" ? styles.prizeBubble : styles.markerContainer,
-              selectedMarker === location.id && (location.title === "Total Prize" ? styles.selectedPrizeBubble : styles.selectedMarker)
-            ]}>
-              <Text style={location.title === "Total Prize" ? styles.prizeText : styles.coinText}>
+            <View
+              style={[
+                location.title === "Total Prize"
+                  ? styles.prizeBubble
+                  : styles.markerContainer,
+                selectedMarker === location.id &&
+                  (location.title === "Total Prize"
+                    ? styles.selectedPrizeBubble
+                    : styles.selectedMarker),
+              ]}
+            >
+              <Text
+                style={
+                  location.title === "Total Prize"
+                    ? styles.prizeText
+                    : styles.coinText
+                }
+              >
                 💰{location.coins}
               </Text>
-              <Text style={location.title === "Total Prize" ? styles.prizeTitleText : styles.markerTitle}>
+              <Text
+                style={
+                  location.title === "Total Prize"
+                    ? styles.prizeTitleText
+                    : styles.markerTitle
+                }
+              >
                 {location.title}
               </Text>
-              {location.title === "Total Prize" && <View style={styles.bubbleTail} />}
+              {location.title === "Total Prize" && (
+                <View style={styles.bubbleTail} />
+              )}
             </View>
           </Marker>
         ))}
@@ -252,15 +291,23 @@ const MapScreen: React.FC<{
       {selectedMarker && (
         <View style={styles.markerInfo}>
           {(() => {
-            const selected = eventLocations.find(loc => loc.id === selectedMarker);
-            const selectedCoin = randomCoins.find(coin => coin.id === selectedMarker);
-            
+            const selected = eventLocations.find(
+              (loc) => loc.id === selectedMarker
+            );
+            const selectedCoin = randomCoins.find(
+              (coin) => coin.id === selectedMarker
+            );
+
             if (selected) {
               return (
                 <>
                   <Text style={styles.infoTitle}>{selected.title}</Text>
-                  <Text style={styles.infoDescription}>{selected.description}</Text>
-                  <Text style={styles.infoCoins}>Event Coins: 💰{selected.coins}</Text>
+                  <Text style={styles.infoDescription}>
+                    {selected.description}
+                  </Text>
+                  <Text style={styles.infoCoins}>
+                    Event Coins: 💰{selected.coins}
+                  </Text>
                 </>
               );
             } else if (selectedCoin) {
@@ -268,7 +315,9 @@ const MapScreen: React.FC<{
                 <>
                   <Text style={styles.infoTitle}>Random Coin</Text>
                   <Text style={styles.infoDescription}>Collect this coin!</Text>
-                  <Text style={styles.infoCoins}>Value: 🪙{selectedCoin.value}</Text>
+                  <Text style={styles.infoCoins}>
+                    Value: 🪙{selectedCoin.value}
+                  </Text>
                 </>
               );
             }
@@ -400,7 +449,7 @@ const styles = StyleSheet.create({
   zoomControls: {
     position: "absolute",
     bottom: 200, // Move to bottom
-    right: 15,   // Keep on right side
+    right: 15, // Keep on right side
     alignItems: "center",
   },
   zoomButton: {
