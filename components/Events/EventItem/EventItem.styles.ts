@@ -11,16 +11,44 @@ export const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cardExpired: {
+    backgroundColor: "#1a1a1a",
+    opacity: 0.6,
+  },
   image: {
     width: "100%",
     height: 180,
     borderRadius: 10,
+  },
+  imageExpired: {
+    opacity: 0.5,
   },
   title: {
     color: "#fff",
     fontSize: 18,
     marginTop: 8,
     fontWeight: "bold",
+  },
+  statusRow: {
+    flexDirection: "row",
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 12,
+    fontWeight: "700",
+    overflow: "hidden",
+  },
+  statusOngoing: {
+    backgroundColor: "#234",
+    color: "#7BDBFF",
+  },
+  statusExpired: {
+    backgroundColor: "#332",
+    color: "#AAA",
   },
   detail: {
     color: "#aaa",
@@ -34,6 +62,16 @@ export const styles = StyleSheet.create({
   },
   planned: {
     color: "#66BB6A",
+    fontSize: 14,
+    marginTop: 6,
+  },
+  ongoingText: {
+    color: "#7BDBFF",
+    fontSize: 14,
+    marginTop: 6,
+  },
+  expiredText: {
+    color: "#AAA",
     fontSize: 14,
     marginTop: 6,
   },

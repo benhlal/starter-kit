@@ -14,6 +14,30 @@ export const EventItem: React.FC<EventItemProps> = ({
   onMapPress,
   onParticipate,
 }) => {
+  // Time status computation
+  const now = Date.now();
+  const startMs = useMemo(() => {
+    const t = Date.parse(event.startDate);
+    return Number.isNaN(t) ? undefined : t;
+  }, [event.startDate]);
+  const endMs = useMemo(() => {
+    const t = Date.parse(event.endDate);
+    return Number.isNaN(t) ? undefined : t;
+  }, [event.endDate]);
+  const isExpired = endMs !== undefined ? endMs < now : false;
+  const isOngoing = (() => {
+    if (isExpired) {
+      return false;
+    }
+    if (startMs === undefined) {
+      return false;
+    }
+    if (endMs === undefined) {
+      return startMs <= now;
+    }
+    return startMs <= now && now <= endMs;
+  })();
+
   // Derive participants text: use currentParticipants/maxParticipants if available
   const participantsText = useMemo(() => {
     const current = event.currentParticipants ?? 0;
@@ -26,30 +50,40 @@ export const EventItem: React.FC<EventItemProps> = ({
     return match ? `${match[1]}` : `${current}`;
   }, [event.currentParticipants, event.maxParticipants, event.subscribers]);
 
-  // Deterministic target within 3..6 days + 0..23 hours based on event id
-  const targetDate = useMemo(() => {
-    const seed = Array.from(event.id).reduce((a, c) => a + c.charCodeAt(0), 0);
-    const days = 3 + (seed % 4); // 3..6
-    const hours = Math.abs(Math.floor(seed / 7)) % 24; // 0..23
-    const now = Date.now();
-    return new Date(now + (days * 24 + hours) * 60 * 60 * 1000);
-  }, [event.id]);
-
-  const [plannedCountdown, setPlannedCountdown] = useState<string>("");
+  // Live countdown based on real start/end dates if available
+  const [countdown, setCountdown] = useState<string>("");
 
   useEffect(() => {
-    const update = () => {
-      const diff = Math.max(0, targetDate.getTime() - Date.now());
-      const totalMinutes = Math.floor(diff / (60 * 1000));
-      const days = Math.floor(totalMinutes / (24 * 60));
-      const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
-      const minutes = totalMinutes % 60;
-      setPlannedCountdown(`${days} days ${hours} hours ${minutes} min`);
+    const compute = () => {
+      const nowMs = Date.now();
+      if (isExpired) {
+        setCountdown("");
+        return;
+      }
+      if (isOngoing && endMs !== undefined) {
+        const diff = Math.max(0, endMs - nowMs);
+        const totalMinutes = Math.floor(diff / (60 * 1000));
+        const days = Math.floor(totalMinutes / (24 * 60));
+        const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+        const minutes = totalMinutes % 60;
+        setCountdown(`${days}d ${hours}h ${minutes}m left`);
+        return;
+      }
+      if (!isOngoing && startMs !== undefined) {
+        const diff = Math.max(0, startMs - nowMs);
+        const totalMinutes = Math.floor(diff / (60 * 1000));
+        const days = Math.floor(totalMinutes / (24 * 60));
+        const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+        const minutes = totalMinutes % 60;
+        setCountdown(`${days}d ${hours}h ${minutes}m to start`);
+        return;
+      }
+      setCountdown("");
     };
-    update();
-    const t = setInterval(update, 60 * 1000); // update every minute
+    compute();
+    const t = setInterval(compute, 60 * 1000);
     return () => clearInterval(t);
-  }, [targetDate]);
+  }, [isExpired, isOngoing, startMs, endMs]);
 
   const handleMapPress = () => {
     if (onMapPress) {
@@ -68,10 +102,27 @@ export const EventItem: React.FC<EventItemProps> = ({
     }
   };
 
+  const statusLabel = isOngoing ? "Ongoing" : isExpired ? "Expired" : undefined;
+
   return (
-    <View style={styles.card}>
-      <Image source={{ uri: event.img }} style={styles.image} />
+    <View style={[styles.card, isExpired && styles.cardExpired]}>
+      <Image
+        source={{ uri: event.img }}
+        style={[styles.image, isExpired && styles.imageExpired]}
+      />
       <Text style={styles.title}>{event.name}</Text>
+      {statusLabel ? (
+        <View style={styles.statusRow}>
+          <Text
+            style={[
+              styles.statusBadge,
+              isOngoing ? styles.statusOngoing : styles.statusExpired,
+            ]}
+          >
+            {statusLabel}
+          </Text>
+        </View>
+      ) : null}
       {/* Primary details */}
       {event.balance ? (
         <Text style={styles.detail}>{event.balance}</Text>
@@ -88,20 +139,29 @@ export const EventItem: React.FC<EventItemProps> = ({
           🎁 Rewards: {event.rewards.coins} coins, {event.rewards.experience} XP
         </Text>
       ) : null}
-      {/* Planned countdown (live) */}
-      <Text style={styles.planned}>🗓️ Planned: {plannedCountdown}</Text>
+      {/* Countdown / timing */}
+      {isExpired ? (
+        <Text style={styles.expiredText}>⏰ This event has ended</Text>
+      ) : countdown ? (
+        <Text style={isOngoing ? styles.ongoingText : styles.planned}>
+          {isOngoing ? "⏱️ Ends in: " : "🗓️ Starts in: "}
+          {countdown}
+        </Text>
+      ) : null}
       {/* Distance (legacy) */}
       {event.distance ? (
         <Text style={styles.distance}>📍 {event.distance}</Text>
       ) : null}
       {/* Actions */}
       <View style={styles.actionsRow}>
-        <TouchableOpacity
-          style={styles.participateButton}
-          onPress={handleParticipatePress}
-        >
-          <Text style={styles.participateButtonText}>Participate</Text>
-        </TouchableOpacity>
+        {!isExpired ? (
+          <TouchableOpacity
+            style={styles.participateButton}
+            onPress={handleParticipatePress}
+          >
+            <Text style={styles.participateButtonText}>Participate</Text>
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity style={styles.mapButton} onPress={handleMapPress}>
           <Text style={styles.mapButtonText}>View on Map</Text>
         </TouchableOpacity>
