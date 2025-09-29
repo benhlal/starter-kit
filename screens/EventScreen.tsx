@@ -73,12 +73,7 @@ const EventScreen: React.FC<{ setActiveTab?: () => void }> = ({ setActiveTab }) 
 
       {/* Floating Map Button */}
       <TouchableWithoutFeedback onPress={() => setActiveTab && setActiveTab()}>
-        <View
-          style={[
-            styles.floatingButton,
-            { opacity: 0.8, zIndex: 10, bottom: 95 },
-          ]}
-        >
+        <View style={styles.floatingButton}>
           <Text style={styles.floatingButtonText}>📍 Map</Text>
         </View>
       </TouchableWithoutFeedback>
@@ -103,13 +98,14 @@ const styles = StyleSheet.create({
   distance: { color: "#7B3FE4", fontSize: 14, marginTop: 4 },
   floatingButton: {
     position: "absolute",
-    bottom: 70,
+    bottom: 120, // Same position as MapScreen
     alignSelf: "center",
     backgroundColor: "#7B3FE4",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 30,
     elevation: 6,
+    zIndex: 10,
   },
   floatingButtonText: {
     color: "#fff",

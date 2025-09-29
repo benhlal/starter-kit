@@ -58,13 +58,14 @@ const styles = StyleSheet.create({
   },
   floatingButton: {
     position: "absolute",
-    bottom: 120, // Higher position since it's an overlay
+    bottom: 120, // Same position as EventScreen
     alignSelf: "center",
     backgroundColor: "#7B3FE4",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 30,
     elevation: 6,
+    zIndex: 10,
   },
   floatingButtonText: {
     color: "#fff",
