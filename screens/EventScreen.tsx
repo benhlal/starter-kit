@@ -5,17 +5,19 @@ import {
   Image,
   FlatList,
   TouchableWithoutFeedback,
+  TouchableOpacity,
   StyleSheet,
 } from "react-native";
 
 const events = [
   {
     id: "1",
-    name: "Paris City Tour",
+    name: "Total Prize",
     balance: "Total Balance: €1200",
     subscribers: "532 subscribers",
     distance: "2 km",
     img: "https://images.pexels.com/photos/338515/pexels-photo-338515.jpeg?auto=compress&w=600",
+    coordinate: { latitude: 48.8566, longitude: 2.3522 },
   },
   {
     id: "2",
@@ -24,6 +26,7 @@ const events = [
     subscribers: "420 subscribers",
     distance: "5 km",
     img: "https://images.pexels.com/photos/462118/pexels-photo-462118.jpeg?auto=compress&w=600",
+    coordinate: { latitude: 40.7829, longitude: -73.9654 },
   },
   {
     id: "3",
@@ -32,6 +35,7 @@ const events = [
     subscribers: "300 subscribers",
     distance: "3.5 km",
     img: "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+    coordinate: { latitude: 35.6762, longitude: 139.6503 },
   },
   {
     id: "4",
@@ -40,6 +44,7 @@ const events = [
     subscribers: "210 subscribers",
     distance: "4 km",
     img: "https://images.pexels.com/photos/2193300/pexels-photo-2193300.jpeg",
+    coordinate: { latitude: -33.8568, longitude: 151.2153 },
   },
   {
     id: "5",
@@ -48,10 +53,13 @@ const events = [
     subscribers: "410 subscribers",
     distance: "2.8 km",
     img: "https://images.pexels.com/photos/460672/pexels-photo-460672.jpeg",
+    coordinate: { latitude: 51.5074, longitude: -0.1278 },
   },
 ];
 
-const EventScreen: React.FC<{ setActiveTab?: () => void }> = ({ setActiveTab }) => {
+const EventScreen: React.FC<{ 
+  setActiveTab?: (location?: { latitude: number; longitude: number; title: string }) => void 
+}> = ({ setActiveTab }) => {
   const renderItem = ({ item }: any) => (
     <View style={styles.card}>
       <Image source={{ uri: item.img }} style={styles.image} />
@@ -59,6 +67,18 @@ const EventScreen: React.FC<{ setActiveTab?: () => void }> = ({ setActiveTab }) 
       <Text style={styles.detail}>{item.balance}</Text>
       <Text style={styles.detail}>{item.subscribers}</Text>
       <Text style={styles.distance}>📍 {item.distance}</Text>
+      
+      {/* View on Map Button */}
+      <TouchableOpacity 
+        style={styles.mapButton}
+        onPress={() => setActiveTab && setActiveTab({
+          latitude: item.coordinate.latitude,
+          longitude: item.coordinate.longitude,
+          title: item.name
+        })}
+      >
+        <Text style={styles.mapButtonText}>🗺️ View on Map</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -111,6 +131,25 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  // View on Map button
+  mapButton: {
+    backgroundColor: "#FF9500",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: "flex-end", // Move to right side
+    marginTop: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  mapButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
 

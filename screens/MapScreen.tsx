@@ -1,15 +1,15 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableWithoutFeedback, TouchableOpacity } from "react-native";
 import MapView, { PROVIDER_GOOGLE, Marker, Region } from "react-native-maps";
-// Generate random coins around current location (Paris)
-const generateRandomCoins = (centerLat: number, centerLng: number, count: number = 25) => {
+// Generate random coins around current location
+const generateRandomCoins = (centerLat: number, centerLng: number, count: number = 25, prefix: string) => {
   const coins = [];
   for (let i = 0; i < count; i++) {
     // Generate random offset within ~5km radius
     const latOffset = (Math.random() - 0.5) * 0.09; // ~5km (0.045 degrees ≈ 5km)
     const lngOffset = (Math.random() - 0.5) * 0.09; // ~5km
     coins.push({
-      id: `coin-${i}`,
+      id: `${prefix}-coin-${i}`, // Use prefix to make IDs unique
       coordinate: {
         latitude: centerLat + latOffset,
         longitude: centerLng + lngOffset,
@@ -21,7 +21,13 @@ const generateRandomCoins = (centerLat: number, centerLng: number, count: number
 };
 
 // Random coins around Paris (25 coins in 5km radius)
-const randomCoins = generateRandomCoins(48.8566, 2.3522, 25);
+const parisCoins = generateRandomCoins(48.8566, 2.3522, 25, "paris");
+
+// Random coins around London (25 coins in 5km radius)
+const londonCoins = generateRandomCoins(51.5074, -0.1278, 25, "london");
+
+// Combine all coins
+const randomCoins = [...parisCoins, ...londonCoins];
 const eventLocations = [
   {
     id: "1",
@@ -93,7 +99,10 @@ const getaroundMapStyle = [
   },
 ];
 
-const MapScreen: React.FC<{ setActiveTab?: () => void }> = ({ setActiveTab }) => {
+const MapScreen: React.FC<{ 
+  setActiveTab?: () => void;
+  focusLocation?: { latitude: number; longitude: number; title: string };
+}> = ({ setActiveTab, focusLocation }) => {
   const mapRef = useRef<MapView>(null);
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
   const [region, setRegion] = useState<Region>({
@@ -144,6 +153,29 @@ const MapScreen: React.FC<{ setActiveTab?: () => void }> = ({ setActiveTab }) =>
     setSelectedMarker(null);
     mapRef.current?.animateToRegion(resetRegion, 1000);
   };
+
+  // Focus on specific location when prop changes
+  useEffect(() => {
+    if (focusLocation && mapRef.current) {
+      const focusRegion = {
+        latitude: focusLocation.latitude,
+        longitude: focusLocation.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
+      setRegion(focusRegion);
+      mapRef.current.animateToRegion(focusRegion, 1500);
+      
+      // Find and select the marker
+      const eventMarker = eventLocations.find(loc => 
+        Math.abs(loc.coordinate.latitude - focusLocation.latitude) < 0.01 &&
+        Math.abs(loc.coordinate.longitude - focusLocation.longitude) < 0.01
+      );
+      if (eventMarker) {
+        setSelectedMarker(eventMarker.id);
+      }
+    }
+  }, [focusLocation]);
 
   return (
     <View style={styles.container}>

@@ -9,6 +9,7 @@ const HomeScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"Home" | "Account">("Home");
   const [showMap, setShowMap] = useState(false);
   const [shouldRenderMap, setShouldRenderMap] = useState(false);
+  const [focusLocation, setFocusLocation] = useState<{ latitude: number; longitude: number; title: string } | undefined>();
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab as "Home" | "Account");
@@ -19,8 +20,12 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  const handleMapToggle = () => {
+  const handleMapToggle = (location?: { latitude: number; longitude: number; title: string }) => {
     if (!showMap) {
+      // Set focus location if provided
+      if (location) {
+        setFocusLocation(location);
+      }
       // Pre-render map off-screen first, then show instantly
       setShouldRenderMap(true);
       setTimeout(() => {
@@ -31,6 +36,7 @@ const HomeScreen: React.FC = () => {
       setShowMap(false);
       setTimeout(() => {
         setShouldRenderMap(false);
+        setFocusLocation(undefined); // Clear focus location
       }, 50);
     }
   };
@@ -54,7 +60,7 @@ const HomeScreen: React.FC = () => {
                   pointerEvents: showMap ? 'auto' : 'none'
                 }
               ]}>
-                <MapScreen setActiveTab={handleMapToggle} />
+                <MapScreen setActiveTab={handleMapToggle} focusLocation={focusLocation} />
               </View>
             )}
           </View>
