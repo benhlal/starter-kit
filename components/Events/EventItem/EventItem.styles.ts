@@ -50,6 +50,13 @@ export const styles = StyleSheet.create({
     backgroundColor: "#332",
     color: "#AAA",
   },
+  statusUpcoming: {
+    backgroundColor: "#1f3d2a",
+    color: "#77e38a",
+  },
+  statusRight: {
+    marginLeft: "auto",
+  },
   detail: {
     color: "#aaa",
     fontSize: 14,

@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import MapView, { PROVIDER_GOOGLE, Marker, Region } from "react-native-maps";
-import { useEventLocations } from "../../state/recoil/hooks";
+import { useEventLocations, useMapState } from "../../state/recoil/hooks";
 import { EventLocation } from "../../types";
 // Generate random coins around current location
 const generateRandomCoins = (
@@ -89,6 +89,8 @@ const MapScreen: React.FC<{
     longitudeDelta: 0.1,
   });
   const { eventLocations, fetchEventLocations } = useEventLocations();
+  const { selectedEvent } = useMapState();
+  const isParticipant = false; // Placeholder: real participant check when profile includes joined events
 
   useEffect(() => {
     fetchEventLocations();
@@ -235,17 +237,20 @@ const MapScreen: React.FC<{
         ))}
 
         {/* Random coin markers */}
-        {randomCoins.map((coin) => (
-          <Marker
-            key={coin.id}
-            coordinate={coin.coordinate}
-            onPress={() => handleMarkerPress(coin.id, coin.coordinate)}
-          >
-            <View style={styles.coinMarker}>
-              <Text style={styles.randomCoinText}>🪙</Text>
-            </View>
-          </Marker>
-        ))}
+        {/* Only show random coins when user is a participant of the selected event */}
+        {isParticipant && selectedEvent
+          ? randomCoins.map((coin) => (
+              <Marker
+                key={coin.id}
+                coordinate={coin.coordinate}
+                onPress={() => handleMarkerPress(coin.id, coin.coordinate)}
+              >
+                <View style={styles.coinMarker}>
+                  <Text style={styles.randomCoinText}>🪙</Text>
+                </View>
+              </Marker>
+            ))
+          : null}
       </MapView>
 
       {/* Zoom Controls */}

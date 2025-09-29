@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import { Event, FocusLocation } from "../../../types";
+import { useMapState } from "../../../state/recoil/hooks";
 import { styles } from "./EventItem.styles";
 
 interface EventItemProps {
@@ -14,6 +15,7 @@ export const EventItem: React.FC<EventItemProps> = ({
   onMapPress,
   onParticipate,
 }) => {
+  const { setSelectedEvent } = useMapState();
   // Time status computation
   const now = Date.now();
   const startMs = useMemo(() => {
@@ -86,6 +88,8 @@ export const EventItem: React.FC<EventItemProps> = ({
   }, [isExpired, isOngoing, startMs, endMs]);
 
   const handleMapPress = () => {
+    // Set selected event for map visibility logic
+    setSelectedEvent(event);
     if (onMapPress) {
       const coord = event.coordinate ?? event.location;
       onMapPress({
@@ -102,7 +106,19 @@ export const EventItem: React.FC<EventItemProps> = ({
     }
   };
 
-  const statusLabel = isOngoing ? "Ongoing" : isExpired ? "Expired" : undefined;
+  const statusType: "ongoing" | "expired" | "upcoming" | undefined = isOngoing
+    ? "ongoing"
+    : isExpired
+    ? "expired"
+    : "upcoming";
+  const statusLabel =
+    statusType === "ongoing"
+      ? "Ongoing"
+      : statusType === "expired"
+      ? "Expired"
+      : statusType === "upcoming"
+      ? "Upcoming"
+      : undefined;
 
   return (
     <View style={[styles.card, isExpired && styles.cardExpired]}>
@@ -116,7 +132,11 @@ export const EventItem: React.FC<EventItemProps> = ({
           <Text
             style={[
               styles.statusBadge,
-              isOngoing ? styles.statusOngoing : styles.statusExpired,
+              statusType === "ongoing"
+                ? [styles.statusOngoing, styles.statusRight]
+                : statusType === "expired"
+                ? styles.statusExpired
+                : styles.statusUpcoming,
             ]}
           >
             {statusLabel}
