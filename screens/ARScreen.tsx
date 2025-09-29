@@ -1,23 +1,12 @@
 import React from "react";
 import { View, Text, Button, StyleSheet } from "react-native";
-import { StackNavigationProp } from "@react-navigation/stack";
-import { RootStackParamList } from "../App";
 
-type ARNav = StackNavigationProp<RootStackParamList, "AR">;
-
-interface Props {
-  navigation: ARNav;
-}
-
-const ARScreen: React.FC<Props> = ({ navigation }) => {
+const ARScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>🕶️ AR Screen (empty for now)</Text>
-      <Button title="Go to Home" onPress={() => navigation.navigate("Home")} />
-      <Button
-        title="Go to Profile"
-        onPress={() => navigation.navigate("Profile")}
-      />
+      <Button title="Go to Home" onPress={() => {}} />
+      <Button title="Go to Profile" onPress={() => {}} />
     </View>
   );
 };

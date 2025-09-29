@@ -2,8 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableWithoutFeedback } from "react-native";
 import BottomNav from "../components/BottomNav/BottomNav";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
-import { useRecoilState } from "recoil";
-import { activeTabState } from "../state/tabs";
+// ...existing code...
 
 const getaroundMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#181a20" }] },
@@ -23,7 +22,10 @@ const getaroundMapStyle = [
 ];
 
 const MapScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useRecoilState(activeTabState);
+  // Local tab state for consistency with HomeScreen
+  const [activeTab, setActiveTab] = React.useState<
+    "Home" | "Search" | "Profile" | "Map" | "EVENTS" | "AR"
+  >("Map");
 
   return (
     <View style={styles.container}>

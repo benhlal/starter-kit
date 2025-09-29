@@ -1,4 +1,3 @@
-import { StackNavigationProp } from "@react-navigation/stack";
 import React from "react";
 import {
   View,
@@ -9,13 +8,6 @@ import {
   StyleSheet,
 } from "react-native";
 import BottomNav from "../components/BottomNav/BottomNav";
-import { RootStackParamList } from "../App";
-
-type EventScreenNav = StackNavigationProp<RootStackParamList, "EVENTS">;
-
-interface Props {
-  navigation: EventScreenNav;
-}
 
 const events = [
   {
@@ -60,7 +52,7 @@ const events = [
   },
 ];
 
-const EventScreen: React.FC<Props> = ({ navigation }) => {
+const EventScreen: React.FC = () => {
   const renderItem = ({ item }: any) => (
     <View style={styles.card}>
       <Image source={{ uri: item.img }} style={styles.image} />
@@ -81,7 +73,7 @@ const EventScreen: React.FC<Props> = ({ navigation }) => {
       />
 
       {/* Floating Map Button (above BottomNav, no flash effect) */}
-      <TouchableWithoutFeedback onPress={() => navigation.navigate("Map")}>
+      <TouchableWithoutFeedback>
         <View
           style={[
             styles.floatingButton,
@@ -93,17 +85,7 @@ const EventScreen: React.FC<Props> = ({ navigation }) => {
       </TouchableWithoutFeedback>
 
       {/* Shared Bottom Navigation */}
-      <BottomNav
-        navigation={navigation}
-        active="EVENTS"
-        setActiveTab={function (
-          _value: React.SetStateAction<
-            "Home" | "Profile" | "Map" | "EVENTS" | "Search"
-          >
-        ) {
-          // No-op for stack screens
-        }}
-      />
+      <BottomNav active="EVENTS" setActiveTab={() => {}} />
     </View>
   );
 };

@@ -1,21 +1,12 @@
 import React from "react";
 import { View, Text, Button, StyleSheet } from "react-native";
-import { StackNavigationProp } from "@react-navigation/stack";
-import { RootStackParamList } from "../App";
 
-type ProfileNav = StackNavigationProp<RootStackParamList, "Profile">;
-
-interface Props {
-  navigation?: ProfileNav;
-}
-
-const ProfileScreen: React.FC<Props> = ({ navigation }) => {
+const ProfileScreen: React.FC = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>👤 Profile Screen</Text>
-      <Button title="Go to Home" onPress={() => navigation?.navigate("Home")} />
-      <Button title="Go to Map" onPress={() => navigation?.navigate("Map")} />
-      <Button title="Go to AR" onPress={() => navigation?.navigate("AR")} />
+      <Text style={styles.title}>Profile Screen</Text>
+      <Button title="Go to Home" onPress={() => {}} />
+      <Button title="Go to AR" onPress={() => {}} />
     </View>
   );
 };
