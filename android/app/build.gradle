@@ -1,7 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-apply plugin: "com.google.gms.google-services" // 👈 must be last for Firebase
 
 react {
     // React Native plugin config (leave default unless you need overrides)
@@ -15,10 +14,10 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.virostarterkit"
+    namespace "com.benh.zch"
 
     defaultConfig {
-        applicationId "com.virostarterkit"
+    applicationId "com.benh.zch"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -69,17 +68,57 @@ dependencies {
     // Firebase (via BoM)
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-firestore'
-    implementation 'com.google.firebase:firebase-analytics'
 
     // Google Maps & Location (needed for react-native-maps)
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
+    // Google Sign-In (align to location to avoid API incompatibility at runtime)
+    implementation("com.google.android.gms:play-services-auth:21.0.1")
 
     // JS engine
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+
+    // Workaround: force older measurement libs to avoid Kotlin 2.1 metadata with AGP/Kotlin 1.8
+    constraints {
+        implementation('com.google.android.gms:play-services-measurement-api:22.0.1') {
+            because 'Newer 23.x artifacts use Kotlin 2.1 metadata incompatible with Kotlin 1.8 in this project'
+        }
+        implementation('com.google.android.gms:play-services-measurement-impl:22.0.1') {
+            because 'Align to Kotlin 1.8 compatible artifacts'
+        }
+    }
+}
+
+configurations.all { config ->
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'com.google.android.gms' && details.requested.name.startsWith('play-services-measurement')) {
+            details.useVersion '22.0.1'
+            details.because 'Keep measurement libs compatible with Kotlin 1.8 used by RN 0.73'
+        }
+        // Align key gms libs used by react-native-maps / google-signin to avoid class/interface mismatches
+        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-auth') {
+            details.useVersion '21.0.1'
+            details.because 'Align with play-services-location 21.0.1 to prevent AirMap showsUserLocation crash'
+        }
+        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-auth-base') {
+            details.useVersion '18.0.10'
+        }
+        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-auth-api-phone') {
+            details.useVersion '18.0.2'
+        }
+        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-location') {
+            details.useVersion '21.0.1'
+        }
+        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-base') {
+            details.useVersion '18.5.0'
+        }
+        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-basement') {
+            details.useVersion '18.5.0'
+        }
     }
 }
 
@@ -92,3 +131,6 @@ afterEvaluate {
         it.dependsOn "processDebugGoogleServices"
     }
 }
+
+// Apply Google Services plugin (must be in the app module)
+apply plugin: "com.google.gms.google-services"
