@@ -9,9 +9,11 @@ import {
 import { EventList } from "../../components/Events/EventList";
 import { FloatingButton } from "../../components/Home/FloatingButton";
 import { events } from "../../utils/constants";
+import type { TimeStatus } from "../../types";
 import { FocusLocation } from "../../types";
 import { useRecoilState } from "recoil";
 import { uiFiltersState } from "../../state/recoil/atoms";
+import { useUserProfile } from "../../state/recoil/hooks";
 import {
   FloatingFilters,
   FilterChip,
@@ -43,12 +45,13 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
   const [whenOpen, setWhenOpen] = useState(false);
   const [locationLabel, setLocationLabel] = useState("Current location");
   const [whenLabel, setWhenLabel] = useState("When?");
+  const { userProfile } = useUserProfile();
 
   const chips: FilterChip[] = useMemo(() => {
     const vehicleLabel =
-      filters.vehicleType === "any"
-        ? "Vehicle type"
-        : `${filters.vehicleType}`.replace("-", " ");
+      !filters.timeStatus || filters.timeStatus === "any"
+        ? "Time"
+        : `Time: ${filters.timeStatus}`;
     const pickupLabel =
       filters.pickupMethod === "any"
         ? "Pickup method"
@@ -56,14 +59,15 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
         ? "Meet owner"
         : "Connect";
     const moreCount =
-      (filters.instantBooking ? 1 : 0) +
-      (filters.newCarsOnly ? 1 : 0) +
-      (filters.seatsMin > 2 ? 1 : 0) +
-      (filters.features?.length || 0);
+      (filters.subscribedOnly ? 1 : 0) +
+      (filters.newEventsOnly ? 1 : 0) +
+      (filters.participantsMin > 0 ? 1 : 0) +
+      (filters.cities?.length || 0);
     const moreLabel =
       moreCount > 0 ? `More filters (${moreCount})` : "More filters";
 
-    const isVehicleActive = filters.vehicleType !== "any";
+    const isVehicleActive =
+      !!filters.timeStatus && filters.timeStatus !== "any";
     const isPickupActive = filters.pickupMethod !== "any";
     const isMoreActive = moreCount > 0;
 
@@ -124,6 +128,77 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
     setConfirmOpen({ title: "Participate", fee });
   };
 
+  // Apply time status filter if any
+  const filteredEvents = useMemo(() => {
+    // Start with all
+    let list = events.slice();
+
+    // Time status filter
+    const ts = (filters.timeStatus || "any") as TimeStatus;
+    if (ts !== "any") {
+      const now = Date.now();
+      list = list.filter((e) => {
+        const start = Date.parse(e.startDate);
+        const end = Date.parse(e.endDate);
+        const hasStart = !Number.isNaN(start);
+        const hasEnd = !Number.isNaN(end);
+        const isExpired = hasEnd ? end < now : false;
+        const isOngoing =
+          !isExpired &&
+          hasStart &&
+          (hasEnd ? start <= now && now <= end : start <= now);
+        if (ts === "expired") {
+          return isExpired;
+        }
+        if (ts === "ongoing") {
+          return isOngoing;
+        }
+        // upcoming
+        return !isExpired && !isOngoing;
+      });
+    }
+
+    // Subscribed only
+    if (filters.subscribedOnly) {
+      const joined = new Set<string>(userProfile?.joinedEvents || []);
+      list = list.filter((e) => joined.has(e.id));
+    }
+
+    // Participants minimum
+    if (filters.participantsMin && filters.participantsMin > 0) {
+      list = list.filter(
+        (e) => (e.currentParticipants || 0) >= filters.participantsMin
+      );
+    }
+
+    // New events only (created within 7 days)
+    if (filters.newEventsOnly) {
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      list = list.filter((e) => {
+        const created = Date.parse(e.createdAt);
+        return !Number.isNaN(created) && now - created <= sevenDays;
+      });
+    }
+
+    // Cities
+    if (filters.cities && filters.cities.length > 0) {
+      const citySet = new Set(filters.cities.map((c) => c.toLowerCase()));
+      list = list.filter((e) => {
+        const addr = e.location?.address || e.name || e.title || "";
+        const lower = addr.toLowerCase();
+        for (const c of citySet) {
+          if (lower.includes(c)) {
+            return true;
+          }
+        }
+        return false;
+      });
+    }
+
+    return list;
+  }, [filters, userProfile]);
+
   return (
     <View style={screenStyles.container}>
       {/* Top search pills overlay */}
@@ -145,11 +220,10 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
       {/* Vehicle type modal */}
       <VehicleTypeModal
         visible={vehicleOpen}
-        value={filters.vehicleType}
+        timeValue={filters.timeStatus}
         onClose={() => setVehicleOpen(false)}
-        onSelect={(v) => {
-          setFilters((prev) => ({ ...prev, vehicleType: v }));
-          setVehicleOpen(false);
+        onSelectTime={(t) => {
+          setFilters((prev) => ({ ...prev, timeStatus: t }));
         }}
       />
 
@@ -167,16 +241,16 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
       {/* More filters modal */}
       <MoreFiltersModal
         visible={moreOpen}
-        instantBooking={filters.instantBooking}
-        seatsMin={filters.seatsMin}
-        newCarsOnly={filters.newCarsOnly}
-        features={filters.features}
+        subscribedOnly={filters.subscribedOnly}
+        participantsMin={filters.participantsMin}
+        newEventsOnly={filters.newEventsOnly}
+        cities={filters.cities}
         onClose={() => setMoreOpen(false)}
         onChange={(changes) => setFilters((prev) => ({ ...prev, ...changes }))}
       />
 
       <EventList
-        events={events}
+        events={filteredEvents}
         onEventPress={handleEventPress}
         onScrollDirectionChange={(dir) => setVisible(dir === "up")}
         topInset={140}

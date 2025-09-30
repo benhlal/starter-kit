@@ -1,40 +1,51 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import BottomSheet from "../Sheet/BottomSheet";
-import type { VehicleType } from "../../../types";
+import type { TimeStatus } from "../../../types";
 
 interface VehicleTypeModalProps {
   visible: boolean;
-  value: VehicleType;
+  timeValue?: TimeStatus;
   onClose: () => void;
-  onSelect: (v: VehicleType) => void;
+  onSelectTime?: (t: TimeStatus) => void;
 }
 
-const OPTIONS: { key: VehicleType; label: string }[] = [
-  { key: "any", label: "Any" },
-  { key: "city", label: "City" },
-  { key: "suv", label: "SUV" },
-  { key: "van", label: "Van" },
-  { key: "electric", label: "Electric" },
-  { key: "luxury", label: "Luxury" },
+// Removed vehicle type options; keep only time categories
+
+const TIME_OPTIONS: { key: TimeStatus; label: string }[] = [
+  { key: "any", label: "Any time" },
+  { key: "ongoing", label: "Ongoing" },
+  { key: "upcoming", label: "Upcoming" },
+  { key: "expired", label: "Expired" },
 ];
 
 export const VehicleTypeModal: React.FC<VehicleTypeModalProps> = ({
   visible,
-  value,
+  timeValue = "any",
   onClose,
-  onSelect,
+  onSelectTime,
 }) => {
   return (
-    <BottomSheet visible={visible} title="Vehicle type" onClose={onClose}>
+    <BottomSheet visible={visible} title="Type" onClose={onClose}>
       <View style={styles.list}>
-        {OPTIONS.map((opt) => {
-          const selected = opt.key === value;
+        <Text style={styles.sectionTitle}>Time</Text>
+        {TIME_OPTIONS.map((opt) => {
+          const selected = opt.key === timeValue;
+          const handlePress = () => {
+            if (onSelectTime) {
+              onSelectTime(opt.key);
+            }
+          };
           return (
             <TouchableOpacity
               key={opt.key}
-              style={[styles.row, selected && styles.rowSelected]}
-              onPress={() => onSelect(opt.key)}
+              style={[
+                styles.row,
+                styles.timeRow,
+                selected && styles.rowSelected,
+              ]}
+              onPress={handlePress}
+              disabled={!onSelectTime}
             >
               <Text style={[styles.label, selected && styles.labelSelected]}>
                 {opt.label}
@@ -63,4 +74,14 @@ const styles = StyleSheet.create({
   },
   label: { color: "#EDEDED", fontSize: 16, fontWeight: "600" },
   labelSelected: { color: "#FFFFFF" },
+  sectionTitle: {
+    color: "#A0A0A0",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  timeRow: {
+    opacity: 0.9,
+  },
 });

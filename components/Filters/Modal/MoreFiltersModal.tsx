@@ -1,50 +1,52 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Switch } from "react-native";
 import BottomSheet from "../Sheet/BottomSheet";
-import type { FeatureKey } from "../../../types";
 
 interface MoreFiltersModalProps {
   visible: boolean;
-  instantBooking: boolean;
-  seatsMin: number;
-  newCarsOnly: boolean;
-  features: FeatureKey[];
+  subscribedOnly: boolean;
+  participantsMin: number;
+  newEventsOnly: boolean;
+  cities: string[];
   onClose: () => void;
   onChange: (
     changes: Partial<{
-      instantBooking: boolean;
-      seatsMin: number;
-      newCarsOnly: boolean;
-      features: FeatureKey[];
+      subscribedOnly: boolean;
+      participantsMin: number;
+      newEventsOnly: boolean;
+      cities: string[];
     }>
   ) => void;
 }
 
-const FEATURE_OPTIONS: { key: FeatureKey; label: string }[] = [
-  { key: "child-seat", label: "Child seat" },
-  { key: "gps", label: "GPS" },
-  { key: "air-conditioning", label: "Air conditioning" },
-  { key: "bike-rack", label: "Bike rack" },
-  { key: "roof-box", label: "Roof box" },
+const CITY_OPTIONS: string[] = [
+  "Paris",
+  "London",
+  "Berlin",
+  "New York",
+  "Tokyo",
+  "Sydney",
+  "Marrakesh",
+  "Casablanca",
 ];
 
 export const MoreFiltersModal: React.FC<MoreFiltersModalProps> = ({
   visible,
-  instantBooking,
-  seatsMin,
-  newCarsOnly,
-  features,
+  subscribedOnly,
+  participantsMin,
+  newEventsOnly,
+  cities,
   onClose,
   onChange,
 }) => {
-  const toggleFeature = (key: FeatureKey) => {
-    const set = new Set<FeatureKey>(features);
-    if (set.has(key)) {
-      set.delete(key);
+  const toggleCity = (name: string) => {
+    const set = new Set<string>(cities);
+    if (set.has(name)) {
+      set.delete(name);
     } else {
-      set.add(key);
+      set.add(name);
     }
-    onChange({ features: Array.from(set) });
+    onChange({ cities: Array.from(set) });
   };
 
   const Footer = (
@@ -72,31 +74,31 @@ export const MoreFiltersModal: React.FC<MoreFiltersModalProps> = ({
       footer={Footer}
     >
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Instant booking</Text>
+        <Text style={styles.sectionTitle}>Events I'm subscribed to</Text>
         <View style={styles.rowBetween}>
-          <Text style={styles.muted}>
-            Vehicles bookable without owner approval
-          </Text>
+          <Text style={styles.muted}>Show only events you've joined</Text>
           <Switch
-            value={instantBooking}
-            onValueChange={(v) => onChange({ instantBooking: v })}
+            value={subscribedOnly}
+            onValueChange={(v) => onChange({ subscribedOnly: v })}
           />
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Number of seats</Text>
+        <Text style={styles.sectionTitle}>Number of participants</Text>
         <View style={styles.counterRow}>
           <TouchableOpacity
             style={styles.counterBtn}
-            onPress={() => onChange({ seatsMin: Math.max(1, seatsMin - 1) })}
+            onPress={() =>
+              onChange({ participantsMin: Math.max(0, participantsMin - 10) })
+            }
           >
             <Text style={styles.counterText}>-</Text>
           </TouchableOpacity>
-          <Text style={styles.counterValue}>{seatsMin}</Text>
+          <Text style={styles.counterValue}>{participantsMin}</Text>
           <TouchableOpacity
             style={styles.counterBtn}
-            onPress={() => onChange({ seatsMin: seatsMin + 1 })}
+            onPress={() => onChange({ participantsMin: participantsMin + 10 })}
           >
             <Text style={styles.counterText}>+</Text>
           </TouchableOpacity>
@@ -105,28 +107,28 @@ export const MoreFiltersModal: React.FC<MoreFiltersModalProps> = ({
 
       <View style={styles.section}>
         <View style={styles.rowBetween}>
-          <Text style={styles.sectionTitle}>New cars only</Text>
+          <Text style={styles.sectionTitle}>New events only</Text>
           <Switch
-            value={newCarsOnly}
-            onValueChange={(v) => onChange({ newCarsOnly: v })}
+            value={newEventsOnly}
+            onValueChange={(v) => onChange({ newEventsOnly: v })}
           />
         </View>
-        <Text style={styles.muted}>Manufactured in the last 5 years</Text>
+        <Text style={styles.muted}>Created within the last 7 days</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Features</Text>
+        <Text style={styles.sectionTitle}>Cities</Text>
         <View style={styles.chipsWrap}>
-          {FEATURE_OPTIONS.map((f) => {
-            const selected = features.includes(f.key);
+          {CITY_OPTIONS.map((city) => {
+            const selected = cities.includes(city);
             return (
               <TouchableOpacity
-                key={f.key}
+                key={city}
                 style={[styles.chip, selected && styles.chipSelected]}
-                onPress={() => toggleFeature(f.key)}
+                onPress={() => toggleCity(city)}
               >
                 <Text style={[styles.chipText, selected && styles.chipTextSel]}>
-                  {f.label}
+                  {city}
                 </Text>
               </TouchableOpacity>
             );

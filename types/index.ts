@@ -299,15 +299,20 @@ export type FeatureKey =
   | "snow-tires"
   | "bluetooth";
 
+export type TimeStatus = "any" | "ongoing" | "upcoming" | "expired";
+
 export interface UiFilters {
   pickupAt?: string; // ISO
   returnAt?: string; // ISO
-  vehicleType: VehicleType;
-  pickupMethod: PickupMethod;
-  instantBooking: boolean;
-  seatsMin: number;
-  newCarsOnly: boolean;
-  features: FeatureKey[];
+  timeStatus?: TimeStatus;
+  // Getaround-style filters repurposed
+  vehicleType: VehicleType; // deprecated in UI (kept for backward-compat)
+  pickupMethod: PickupMethod; // unchanged for now
+  // New filters per spec
+  subscribedOnly: boolean;
+  participantsMin: number;
+  newEventsOnly: boolean;
+  cities: string[];
 }
 
 export interface SearchResult {

@@ -94,9 +94,10 @@ export const uiFiltersState = atom<UiFilters>({
     returnAt: undefined,
     vehicleType: "any",
     pickupMethod: "any",
-    instantBooking: false,
-    seatsMin: 2,
-    newCarsOnly: false,
-    features: [],
+    // New defaults
+    subscribedOnly: false,
+    participantsMin: 0,
+    newEventsOnly: false,
+    cities: [],
   },
 });
