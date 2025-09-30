@@ -5,13 +5,29 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
   TouchableOpacity,
+  PermissionsAndroid,
+  Platform,
+  Alert,
+  Linking,
 } from "react-native";
-import MapView, { PROVIDER_GOOGLE, Marker, Region } from "react-native-maps";
+import Geolocation from "@react-native-community/geolocation";
+import MapView, {
+  PROVIDER_GOOGLE,
+  Marker,
+  Region,
+  MapPressEvent,
+} from "react-native-maps";
 import {
   useEventLocations,
   useMapState,
   useUserProfile,
 } from "../../state/recoil/hooks";
+import { useRecoilState } from "recoil";
+import {
+  mapCenterOnUserState,
+  mapSelectLocationModeState,
+  mapCustomLocationState,
+} from "../../state/recoil/atoms";
 import { EventLocation } from "../../types";
 // Generate random coins around current location
 const generateRandomCoins = (
@@ -86,6 +102,10 @@ const MapScreen: React.FC<{
 }> = ({ setActiveTab, focusLocation }) => {
   const mapRef = useRef<MapView>(null);
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [region, setRegion] = useState<Region>({
     latitude: 48.8566,
     longitude: 2.3522,
@@ -95,6 +115,13 @@ const MapScreen: React.FC<{
   const { eventLocations, fetchEventLocations } = useEventLocations();
   const { selectedEvent } = useMapState();
   const { userProfile } = useUserProfile();
+  const [centerOnUser, setCenterOnUser] = useRecoilState(mapCenterOnUserState);
+  const [selectMode, setSelectMode] = useRecoilState(
+    mapSelectLocationModeState
+  );
+  const [customLocation, setCustomLocation] = useRecoilState(
+    mapCustomLocationState
+  );
   const isParticipant = Array.isArray((userProfile as any)?.joinedEvents)
     ? (userProfile as any).joinedEvents.includes(selectedEvent?.id || "")
     : false; // Placeholder: real participant check when profile includes joined events
@@ -102,6 +129,70 @@ const MapScreen: React.FC<{
   useEffect(() => {
     fetchEventLocations();
   }, [fetchEventLocations]);
+
+  // Get user location on component mount
+  useEffect(() => {
+    const getCurrentPosition = () => {
+      Geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.warn("Error getting location:", error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 10000,
+        }
+      );
+    };
+
+    // Get initial position
+    getCurrentPosition();
+
+    // Watch position changes
+    const watchId = Geolocation.watchPosition(
+      (position) => {
+        setUserLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      (error) => {
+        console.warn("Error watching location:", error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+        distanceFilter: 10, // Update every 10 meters
+      }
+    );
+
+    return () => {
+      Geolocation.clearWatch(watchId);
+    };
+  }, []);
+
+  // Handle center on user location
+  useEffect(() => {
+    if (!centerOnUser || !userLocation) {
+      return;
+    }
+    const focus = {
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
+    };
+    setRegion(focus);
+    mapRef.current?.animateToRegion(focus, 1200);
+    setCenterOnUser(false);
+  }, [centerOnUser, userLocation, setCenterOnUser]);
 
   const handleMarkerPress = (
     markerId: string,
@@ -117,6 +208,15 @@ const MapScreen: React.FC<{
       },
       1000
     );
+  };
+
+  // Dismiss info panel when tapping outside markers
+  const handleMapPress = (_evt: MapPressEvent) => {
+    if (selectMode) {
+      return; // selection handled in onPress prop below where we store custom location
+    }
+    // Dismiss selected marker when tapping empty map area
+    setSelectedMarker(null);
   };
 
   const handleZoomIn = () => {
@@ -139,17 +239,17 @@ const MapScreen: React.FC<{
     mapRef.current?.animateToRegion(newRegion, 500);
   };
 
-  const handleResetView = () => {
-    const resetRegion = {
-      latitude: 48.8566,
-      longitude: 2.3522,
-      latitudeDelta: 0.1,
-      longitudeDelta: 0.1,
-    };
-    setRegion(resetRegion);
-    setSelectedMarker(null);
-    mapRef.current?.animateToRegion(resetRegion, 1000);
-  };
+  // const handleResetView = () => {
+  //   const resetRegion = {
+  //     latitude: 48.8566,
+  //     longitude: 2.3522,
+  //     latitudeDelta: 0.1,
+  //     longitudeDelta: 0.1,
+  //   };
+  //   setRegion(resetRegion);
+  //   setSelectedMarker(null);
+  //   mapRef.current?.animateToRegion(resetRegion, 1000);
+  // };
 
   // Focus on specific location when prop changes
   useEffect(() => {
@@ -187,7 +287,20 @@ const MapScreen: React.FC<{
         initialRegion={region}
         onRegionChangeComplete={setRegion}
         customMapStyle={getaroundMapStyle}
-        showsUserLocation={true}
+        showsUserLocation={false}
+        followsUserLocation={false}
+        onPress={(evt) => {
+          handleMapPress(evt as any);
+          if (!selectMode) {
+            return;
+          }
+          const { coordinate } = evt.nativeEvent;
+          setCustomLocation({
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+          });
+          setSelectMode(false);
+        }}
         showsMyLocationButton={false}
         showsBuildings={true}
         showsIndoors={true}
@@ -258,17 +371,73 @@ const MapScreen: React.FC<{
               </Marker>
             ))
           : null}
+
+        {/* Custom chosen location marker */}
+        {customLocation ? (
+          <Marker coordinate={customLocation}>
+            <View style={styles.customPin}>
+              <Text style={styles.customPinText}>📍</Text>
+            </View>
+          </Marker>
+        ) : null}
+
+        {/* Custom user location marker */}
+        {userLocation ? (
+          <Marker coordinate={userLocation}>
+            <View style={styles.userLocationMarker}>
+              <View style={styles.userLocationDot} />
+            </View>
+          </Marker>
+        ) : null}
       </MapView>
 
-      {/* Zoom Controls */}
-      <View style={styles.zoomControls}>
+      {/* Zoom Controls - keep above info panel */}
+      <View style={styles.zoomControls} pointerEvents="box-none">
         <TouchableOpacity style={styles.zoomButton} onPress={handleZoomIn}>
           <Text style={styles.zoomText}>+</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.zoomButton} onPress={handleZoomOut}>
           <Text style={styles.zoomText}>−</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.resetButton} onPress={handleResetView}>
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={async () => {
+            // Request permission on Android
+            if (Platform.OS === "android") {
+              try {
+                const granted = await PermissionsAndroid.request(
+                  PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+                );
+                if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+                  Alert.alert(
+                    "Location permission needed",
+                    "Please enable location permission to center on your location.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Open Settings",
+                        onPress: () => Linking.openSettings(),
+                      },
+                    ]
+                  );
+                  return;
+                }
+              } catch (e) {
+                console.warn("Location permission error", e);
+                return;
+              }
+            }
+
+            if (userLocation) {
+              setCenterOnUser(true);
+            } else {
+              Alert.alert(
+                "Location not available",
+                "We couldn't find your current location. Please ensure GPS is enabled."
+              );
+            }
+          }}
+        >
           <View style={styles.geoLocationIcon}>
             <View style={styles.outerCircle}>
               <View style={styles.innerCircle} />
@@ -279,7 +448,7 @@ const MapScreen: React.FC<{
 
       {/* Selected marker info */}
       {selectedMarker && (
-        <View style={styles.markerInfo}>
+        <View style={styles.markerInfo} pointerEvents="auto">
           {(() => {
             const selected = eventLocations.find(
               (loc: EventLocation) => loc.id === selectedMarker
@@ -448,6 +617,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FFA500",
   },
+  customPin: {
+    backgroundColor: "#1C1C1C",
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  customPinText: { color: "#EDEDED", fontWeight: "700" },
+  // Custom user location marker
+  userLocationMarker: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(33, 150, 243, 0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#2196F3",
+  },
+  userLocationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#2196F3",
+  },
   randomCoinText: {
     fontSize: 12, // Smaller text
     textAlign: "center",
@@ -458,6 +653,7 @@ const styles = StyleSheet.create({
     bottom: 200, // Move to bottom
     right: 15, // Keep on right side
     alignItems: "center",
+    zIndex: 20,
   },
   zoomButton: {
     backgroundColor: "rgba(33, 150, 243, 0.7)", // Blue instead of purple
@@ -532,6 +728,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 6,
+    zIndex: 10,
   },
   infoTitle: {
     color: "#fff",

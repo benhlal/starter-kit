@@ -69,11 +69,13 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.1.2')
     implementation 'com.google.firebase:firebase-firestore'
 
-    // Google Maps & Location (needed for react-native-maps)
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
-    implementation("com.google.android.gms:play-services-location:21.0.1")
-    // Google Sign-In
-    implementation("com.google.android.gms:play-services-auth:21.4.0")
+    // Google Maps & Location - compatible with Firebase while avoiding showsUserLocation issues
+    implementation("com.google.android.gms:play-services-maps:18.1.0")
+    implementation("com.google.android.gms:play-services-location:20.0.0")
+    // Google Sign-In - compatible with Firebase Auth
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    // Explicitly add Tasks to align with Firebase Auth transitive usage
+    implementation("com.google.android.gms:play-services-tasks:18.1.0")
 
     // JS engine
     if (hermesEnabled.toBoolean()) {
@@ -99,35 +101,51 @@ configurations.all { config ->
             details.useVersion '22.0.1'
             details.because 'Keep measurement libs compatible with Kotlin 1.8 used by RN 0.73'
         }
-        // Align key gms libs used by react-native-maps / google-signin to avoid class/interface mismatches
-        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-auth') {
-            details.useVersion '21.4.0'
-            details.because 'Use a valid, published version and align across modules'
-        }
-        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-auth-base') {
-            details.useVersion '18.0.10'
-        }
-        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-auth-api-phone') {
-            details.useVersion '18.0.2'
-        }
-        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-location') {
-            details.useVersion '21.0.1'
-        }
-        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-base') {
-            details.useVersion '18.5.0'
-        }
-        if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-basement') {
-            details.useVersion '18.5.0'
+        // Comprehensive GMS alignment to prevent class/interface mismatches 
+        if (details.requested.group == 'com.google.android.gms') {
+            switch (details.requested.name) {
+                case 'play-services-auth':
+                    details.useVersion '20.7.0'
+                    details.because 'Compatible with Firebase Auth 24.x'
+                    break
+                case 'play-services-auth-base':
+                    details.useVersion '18.0.10'
+                    break
+                case 'play-services-auth-api-phone':
+                    details.useVersion '18.0.2'
+                    break
+                case 'play-services-location':
+                    details.useVersion '20.0.0'
+                    details.because 'Compatible with Firebase while avoiding showsUserLocation crashes'
+                    break
+                case 'play-services-maps':
+                    details.useVersion '18.1.0'  
+                    break
+                case 'play-services-base':
+                    details.useVersion '18.5.0'
+                    details.because 'Required for Preconditions.checkNotGoogleApiHandlerThread used by play-services-tasks 18.1.0'
+                    break
+                case 'play-services-basement':
+                    details.useVersion '18.5.0'
+                    details.because 'Align with play-services-base for Tasks await() implementation'
+                    break
+                case 'play-services-tasks':
+                    details.useVersion '18.1.0'
+                    details.because 'Align Tasks with Firebase Auth 24.x expectations'
+                    break
+            }
         }
     }
-    // Hard-force specific versions to avoid modules requesting non-existent versions (e.g., 21.0.1)
+    // Hard-force all GMS versions to prevent any transitive conflicts
     resolutionStrategy.force(
-        'com.google.android.gms:play-services-auth:21.4.0',
+        'com.google.android.gms:play-services-auth:20.7.0',
         'com.google.android.gms:play-services-auth-base:18.0.10',
         'com.google.android.gms:play-services-auth-api-phone:18.0.2',
-        'com.google.android.gms:play-services-location:21.0.1',
+        'com.google.android.gms:play-services-location:20.0.0',
+        'com.google.android.gms:play-services-maps:18.1.0',
         'com.google.android.gms:play-services-base:18.5.0',
-        'com.google.android.gms:play-services-basement:18.5.0'
+        'com.google.android.gms:play-services-basement:18.5.0',
+        'com.google.android.gms:play-services-tasks:18.1.0'
     )
 }
 
