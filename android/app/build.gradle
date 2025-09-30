@@ -72,8 +72,8 @@ dependencies {
     // Google Maps & Location (needed for react-native-maps)
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
-    // Google Sign-In (align to location to avoid API incompatibility at runtime)
-    implementation("com.google.android.gms:play-services-auth:21.0.1")
+    // Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:21.4.0")
 
     // JS engine
     if (hermesEnabled.toBoolean()) {
@@ -101,8 +101,8 @@ configurations.all { config ->
         }
         // Align key gms libs used by react-native-maps / google-signin to avoid class/interface mismatches
         if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-auth') {
-            details.useVersion '21.0.1'
-            details.because 'Align with play-services-location 21.0.1 to prevent AirMap showsUserLocation crash'
+            details.useVersion '21.4.0'
+            details.because 'Use a valid, published version and align across modules'
         }
         if (details.requested.group == 'com.google.android.gms' && details.requested.name == 'play-services-auth-base') {
             details.useVersion '18.0.10'
@@ -120,6 +120,15 @@ configurations.all { config ->
             details.useVersion '18.5.0'
         }
     }
+    // Hard-force specific versions to avoid modules requesting non-existent versions (e.g., 21.0.1)
+    resolutionStrategy.force(
+        'com.google.android.gms:play-services-auth:21.4.0',
+        'com.google.android.gms:play-services-auth-base:18.0.10',
+        'com.google.android.gms:play-services-auth-api-phone:18.0.2',
+        'com.google.android.gms:play-services-location:21.0.1',
+        'com.google.android.gms:play-services-base:18.5.0',
+        'com.google.android.gms:play-services-basement:18.5.0'
+    )
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
