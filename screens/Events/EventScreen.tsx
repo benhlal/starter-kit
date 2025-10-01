@@ -19,12 +19,13 @@ import {
 import firestore from "@react-native-firebase/firestore";
 import { EventList } from "../../components/Events/EventList";
 import { FocusLocation } from "../../types";
-import { uiFiltersState } from "../../state/recoil/atoms";
+import { uiFiltersState, eventsState } from "../../state/recoil/atoms";
 import {
   useLocationFilter,
   useTimeFilter,
   useEvents,
   useAuthUser,
+  useUserProfile,
 } from "../../state/recoil/hooks";
 import {
   FloatingFilters,
@@ -59,7 +60,9 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
   const [filtersVisible, setFiltersVisible] = useState(true);
   const filtersOpacity = useRef(new Animated.Value(1)).current;
   const [filters, setFilters] = useRecoilState(uiFiltersState);
+  const [_localEvents, setLocalEvents] = useRecoilState(eventsState);
   const { events, fetchEvents } = useEvents();
+  const { fetchUserProfile } = useUserProfile();
 
   // Fetch events when component mounts
   useEffect(() => {
@@ -273,6 +276,23 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
     }
   };
 
+  // Helper function to update participant count immediately for instant feedback
+  const updateParticipantCount = (eventId: string, increment: number) => {
+    setLocalEvents((prevEvents) =>
+      prevEvents.map((event) =>
+        event.id === eventId
+          ? {
+              ...event,
+              currentParticipants: Math.max(
+                0,
+                (event.currentParticipants || 0) + increment
+              ),
+            }
+          : event
+      )
+    );
+  };
+
   const handleParticipate = (event: any) => {
     console.log("🎯 Opening participation modal for event:", event.id);
     // Refresh user data to ensure accurate participation status
@@ -298,6 +318,9 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
       );
 
       if (result.success) {
+        // Update participant count immediately for instant feedback
+        updateParticipantCount(eventId, 1);
+
         // Update local state with actual fee paid
         const newBalance = userCoins - result.fee;
         setUserCoins(newBalance);
@@ -320,8 +343,13 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
           }
         }
 
-        // Refresh events to update participant count
-        fetchEvents();
+        // Refresh events and profile to update participant count with small delay for database consistency
+        setTimeout(() => {
+          fetchEvents();
+          if (currentUser?.uid) {
+            fetchUserProfile(currentUser.uid);
+          }
+        }, 500);
       } else {
         // Show error message
         Alert.alert("Cannot Join", result.message);
@@ -359,6 +387,9 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
       );
 
       if (result.success) {
+        // Update participant count immediately for instant feedback
+        updateParticipantCount(eventId, -1);
+
         // Update local state with actual refund
         const newBalance = userCoins + result.refund;
         setUserCoins(newBalance);
@@ -383,8 +414,13 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
           }
         }
 
-        // Refresh events to update participant count
-        fetchEvents();
+        // Refresh events and profile to update participant count with small delay for database consistency
+        setTimeout(() => {
+          fetchEvents();
+          if (currentUser?.uid) {
+            fetchUserProfile(currentUser.uid);
+          }
+        }, 500);
       } else {
         Alert.alert("Cannot Leave", result.message);
       }
