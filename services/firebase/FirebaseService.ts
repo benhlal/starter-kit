@@ -3,28 +3,14 @@
 // It's currently disabled for TypeScript checking until Firebase is properly installed
 // Remove @ts-nocheck when you install @react-native-firebase/firestore and @react-native-firebase/auth
 
-// Note: These imports require @react-native-firebase packages to be installed
-// import firestore from "@react-native-firebase/firestore";
-// import auth from "@react-native-firebase/auth";
+// Remove placeholders and use actual RN Firebase modules
+// import app from "@react-native-firebase/app";
+import firestore from "@react-native-firebase/firestore";
+import auth from "@react-native-firebase/auth";
 import { Event, EventLocation, Coin } from "../../types";
 
-// Placeholder Firebase interfaces for now
-const firestore = {
-  collection: () => ({
-    get: () => Promise.resolve({ docs: [] }),
-    add: () => Promise.resolve({ id: "mock" }),
-    doc: () => ({
-      get: () => Promise.resolve({ exists: false }),
-      set: () => Promise.resolve(),
-      update: () => Promise.resolve(),
-      delete: () => Promise.resolve(),
-    }),
-  }),
-};
-
-const auth = {
-  currentUser: null,
-};
+// Ensure default app exists if this file is imported before App.tsx
+// Do not call initializeApp() without params; native config initializes automatically in RN
 
 export class FirebaseService {
   // Collections
@@ -62,10 +48,7 @@ export class FirebaseService {
         return null;
       }
 
-      return {
-        id: doc.id,
-        ...doc.data(),
-      } as Event;
+      return { id: doc.id, ...doc.data() } as Event;
     } catch (error) {
       console.error(`Error fetching event ${id}:`, error);
       throw error;
@@ -143,8 +126,6 @@ export class FirebaseService {
   static async collectCoin(coinId: string, userId: string): Promise<void> {
     try {
       const batch = firestore().batch();
-
-      // Update coin as collected
       const coinRef = firestore().collection(this.COINS_COLLECTION).doc(coinId);
       batch.update(coinRef, {
         collected: true,
@@ -152,7 +133,6 @@ export class FirebaseService {
         collectedAt: firestore.FieldValue.serverTimestamp(),
       });
 
-      // Update user's coin count
       const userRef = firestore().collection(this.USERS_COLLECTION).doc(userId);
       batch.update(userRef, {
         totalCoins: firestore.FieldValue.increment(1),

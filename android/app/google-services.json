@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "816594107270",
-    "project_id": "lookhere-8e2fa",
-    "storage_bucket": "lookhere-8e2fa.appspot.com"
+    "project_number": "764853553419",
+    "project_id": "zcoishunters",
+    "storage_bucket": "zcoishunters.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:816594107270:android:b5ece4d67a684094c50a07",
+        "mobilesdk_app_id": "1:764853553419:android:c3b66a68110314603f7a0e",
         "android_client_info": {
-          "package_name": "com.virostarterkit"
+          "package_name": "com.benh.zch"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "764853553419-616pbt36suvfgn4rbhdtgu88fhm5278k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.benh.zch",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "764853553419-namss394okrfjlmappqqlhbnvrltcrqv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyAftq8Ar0oV1svei2FDhAXhNJzEM7dDbtg"
+          "current_key": "AIzaSyDj-ji8MXJ-Ml3NmqKxKMHQPPT467PXGAI"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "764853553419-namss394okrfjlmappqqlhbnvrltcrqv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

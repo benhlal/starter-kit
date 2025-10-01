@@ -7,6 +7,8 @@ import BottomNav from "../../components/Home/BottomNav/BottomNav";
 import { styles } from "./HomeScreen.styles";
 import BottomSheet from "../../components/Filters/Sheet/BottomSheet";
 import { StyleSheet } from "react-native";
+import LoginScreen from "../Auth/LoginScreen";
+import { useAuthUser } from "../../state/recoil/hooks";
 
 const HomeScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"Home" | "Account">("Home");
@@ -16,6 +18,7 @@ const HomeScreen: React.FC = () => {
   const [focusLocation, setFocusLocation] = useState<
     { latitude: number; longitude: number; title: string } | undefined
   >();
+  const { currentUser } = useAuthUser();
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab as "Home" | "Account");
@@ -52,6 +55,9 @@ const HomeScreen: React.FC = () => {
   };
 
   const renderCurrentScreen = () => {
+    if (!currentUser) {
+      return <LoginScreen />;
+    }
     switch (activeTab) {
       case "Account":
         return <ProfileScreen />;
@@ -82,34 +88,38 @@ const HomeScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>{renderCurrentScreen()}</View>
-      <BottomNav
-        active={activeTab}
-        setActiveTab={handleTabChange}
-        onCreateEvent={() => setCreateOpen(true)}
-      />
-      <BottomSheet
-        visible={createOpen}
-        title="Create Event"
-        onClose={() => setCreateOpen(false)}
-        maxHeightPercent={0.5}
-      >
-        {/* Fancy create dialog content placeholder */}
-        <View style={createStyles.wrap}>
-          <View style={createStyles.card}>
-            <View style={createStyles.rowBetween}>
-              <View>
-                <View style={createStyles.shimmerShort} />
-                <View style={createStyles.shimmerLong} />
+      {currentUser && (
+        <>
+          <BottomNav
+            active={activeTab}
+            setActiveTab={handleTabChange}
+            onCreateEvent={() => setCreateOpen(true)}
+          />
+          <BottomSheet
+            visible={createOpen}
+            title="Create Event"
+            onClose={() => setCreateOpen(false)}
+            maxHeightPercent={0.5}
+          >
+            {/* Fancy create dialog content placeholder */}
+            <View style={createStyles.wrap}>
+              <View style={createStyles.card}>
+                <View style={createStyles.rowBetween}>
+                  <View>
+                    <View style={createStyles.shimmerShort} />
+                    <View style={createStyles.shimmerLong} />
+                  </View>
+                  <View style={createStyles.thumb} />
+                </View>
               </View>
-              <View style={createStyles.thumb} />
+              <View style={createStyles.card}>
+                <View style={createStyles.shimmerMid} />
+                <View style={createStyles.shimmerWide} />
+              </View>
             </View>
-          </View>
-          <View style={createStyles.card}>
-            <View style={createStyles.shimmerMid} />
-            <View style={createStyles.shimmerWide} />
-          </View>
-        </View>
-      </BottomSheet>
+          </BottomSheet>
+        </>
+      )}
     </View>
   );
 };

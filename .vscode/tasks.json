@@ -10,6 +10,66 @@
 				"format",
 				"--silent"
 			]
+		},
+		{
+			"label": "android:clean-build",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android clean :app:assembleDebug",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "android:assembleDebug",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android :app:assembleDebug",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "android:assembleDebug-retry",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android :app:assembleDebug --no-daemon",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "android:assembleDebug-retry",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android :app:assembleDebug --no-daemon"
+		},
+		{
+			"label": "android:assembleDebug",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android :app:assembleDebug"
+		},
+		{
+			"label": "android:clean-build",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android clean :app:assembleDebug",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "android:assembleDebug-retry",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android :app:assembleDebug --no-daemon"
+		},
+		{
+			"label": "android:assembleDebug-retry",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android :app:assembleDebug --no-daemon"
 		}
 	]
 }

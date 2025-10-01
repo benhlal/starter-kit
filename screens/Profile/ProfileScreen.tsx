@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+// @ts-ignore types will exist after install
+import auth from "@react-native-firebase/auth";
 import {
   View,
   Text,
@@ -113,7 +115,17 @@ const ProfileScreen: React.FC = () => {
         text: "Logout",
         style: "destructive",
         onPress: () => {
-          Alert.alert("Logged Out", "You have been logged out successfully!");
+          auth()
+            .signOut()
+            .then(() =>
+              Alert.alert(
+                "Logged Out",
+                "You have been logged out successfully!"
+              )
+            )
+            .catch((e) =>
+              Alert.alert("Logout Error", e?.message || "Unknown error")
+            );
         },
       },
     ]);

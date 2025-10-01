@@ -1,3 +1,4 @@
+// import './src/firebase';
 import React from "react";
 import { RecoilRoot } from "recoil";
 import { SafeAreaProvider } from "react-native-safe-area-context";

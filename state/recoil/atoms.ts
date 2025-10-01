@@ -15,7 +15,7 @@ export const userProfileState = atom({
     totalCoins: 0,
     level: 1,
     eventsJoined: 0,
-    joinedEvents: ["1", "5"],
+    joinedEvents: [],
     achievements: [],
   },
 });
@@ -71,7 +71,7 @@ export const appState = atom({
   default: {
     isOffline: false,
     lastSync: null,
-    useMockData: true, // Toggle for using mock data vs real Firebase
+    useMockData: false, // Use real Firebase by default; toggle in dev if needed
   },
 });
 
@@ -87,6 +87,28 @@ export const mapFocusLocationState = atom({
   default: null,
 });
 
+// Center map on user's current GPS location on next user location update
+export const mapCenterOnUserState = atom<boolean>({
+  key: "mapCenterOnUserState",
+  default: false,
+});
+
+// Enable a mode where tapping the map selects a custom location
+export const mapSelectLocationModeState = atom<boolean>({
+  key: "mapSelectLocationModeState",
+  default: false,
+});
+
+// Holds a custom, user-chosen location on the map (not necessarily an event)
+export const mapCustomLocationState = atom<null | {
+  latitude: number;
+  longitude: number;
+  title?: string;
+}>({
+  key: "mapCustomLocationState",
+  default: null,
+});
+
 export const uiFiltersState = atom<UiFilters>({
   key: "uiFiltersState",
   default: {
@@ -94,10 +116,38 @@ export const uiFiltersState = atom<UiFilters>({
     returnAt: undefined,
     vehicleType: "any",
     pickupMethod: "any",
+    // New time/status filters
+    eventStatus: "any",
+    timePreset: "anytime",
+    customDateRange: undefined,
     // New defaults
     subscribedOnly: false,
     participantsMin: 0,
     newEventsOnly: false,
     cities: [],
+  },
+});
+
+// Location filter state
+export const locationFilterState = atom<{
+  selectedLocation: string;
+  availableLocations: string[];
+}>({
+  key: "locationFilterState",
+  default: {
+    selectedLocation: "anywhere",
+    availableLocations: [
+      "anywhere",
+      "Current Location",
+      "Choose on Map",
+      "Paris, France",
+      "London, UK",
+      "New York, USA",
+      "Tokyo, Japan",
+      "Berlin, Germany",
+      "Madrid, Spain",
+      "Rome, Italy",
+      "Amsterdam, Netherlands",
+    ],
   },
 });

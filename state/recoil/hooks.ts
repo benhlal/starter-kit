@@ -1,5 +1,13 @@
+import React, { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { useCallback } from "react";
+// Modular RN Firebase APIs (v22+)
+import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  serverTimestamp,
+} from "@react-native-firebase/firestore";
 import {
   eventsState,
   userProfileState,
@@ -10,6 +18,8 @@ import {
   appState,
   selectedEventState,
   mapFocusLocationState,
+  locationFilterState,
+  uiFiltersState,
 } from "./atoms";
 import {
   nearbyEventsSelector,
@@ -102,7 +112,7 @@ export const useUserProfile = () => {
           : await FirebaseService.getUserProfile(userId);
 
         if (profileData) {
-          setUserProfile(profileData);
+          setUserProfile(profileData as any);
         }
       } catch (err) {
         setError((prev) => ({ ...prev, profile: err as Error }));
@@ -121,7 +131,7 @@ export const useUserProfile = () => {
           ? await MockService.updateUserProfile(userId, updates)
           : await FirebaseService.updateUserProfile(userId, updates);
 
-        setUserProfile((prev) => ({ ...prev, ...updates }));
+        setUserProfile((prev) => ({ ...(prev as any), ...updates }));
         return updatedProfile;
       } catch (err) {
         console.error("Error updating user profile:", err);
@@ -299,5 +309,139 @@ export const useMapState = () => {
     focusLocation,
     setSelectedEvent,
     setFocusLocation,
+  };
+};
+
+// Hook for managing location filters
+export const useLocationFilter = () => {
+  const [locationFilter, setLocationFilter] =
+    useRecoilState(locationFilterState);
+
+  const setSelectedLocation = useCallback(
+    (location: string) => {
+      setLocationFilter((prev) => ({
+        ...prev,
+        selectedLocation: location,
+      }));
+    },
+    [setLocationFilter]
+  );
+
+  const addCustomLocation = useCallback(
+    (location: string) => {
+      setLocationFilter((prev) => ({
+        ...prev,
+        availableLocations: prev.availableLocations.includes(location)
+          ? prev.availableLocations
+          : [...prev.availableLocations, location],
+      }));
+    },
+    [setLocationFilter]
+  );
+
+  return {
+    selectedLocation: locationFilter.selectedLocation,
+    availableLocations: locationFilter.availableLocations,
+    setSelectedLocation,
+    addCustomLocation,
+  };
+};
+
+// Hook that exposes Firebase auth user and keeps userProfile in sync with auth state
+export const useAuthUser = () => {
+  const [, setUserProfile] = useRecoilState(userProfileState);
+
+  React.useEffect(() => {
+    const auth = getAuth();
+    const db = getFirestore();
+    const unsub = onAuthStateChanged(auth, async (user: any) => {
+      if (user) {
+        // Map Firebase user to our profile shape minimally
+        setUserProfile((prev: any) => ({
+          ...prev,
+          id: user.uid,
+          email: user.email || "",
+          displayName: user.displayName || prev.displayName || "",
+          photoURL: user.photoURL || prev.photoURL || "",
+        }));
+
+        // Ensure user profile exists in Firestore
+        try {
+          await setDoc(
+            doc(db, "users", user.uid),
+            {
+              email: user.email || "",
+              displayName: user.displayName || "",
+              photoURL: user.photoURL || "",
+              updatedAt: serverTimestamp(),
+              createdAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        } catch (e) {
+          console.warn(
+            "Failed to upsert user profile:",
+            (e as any)?.message || e
+          );
+        }
+      } else {
+        setUserProfile((prev: any) => ({
+          ...prev,
+          id: "",
+          email: "",
+          displayName: "",
+          photoURL: "",
+        }));
+      }
+    });
+    return unsub;
+  }, [setUserProfile]);
+
+  return { currentUser: getAuth().currentUser };
+};
+
+// Hook for managing time and status filters
+export const useTimeFilter = () => {
+  const [uiFilters, setUiFilters] = useRecoilState(uiFiltersState);
+
+  const setTimePreset = useCallback(
+    (preset: import("../../types").TimePreset) => {
+      setUiFilters((prev) => ({
+        ...prev,
+        timePreset: preset,
+        // Clear custom date range if not using custom preset
+        customDateRange: preset === "custom" ? prev.customDateRange : undefined,
+      }));
+    },
+    [setUiFilters]
+  );
+
+  const setCustomDateRange = useCallback(
+    (range: import("../../types").DateRange) => {
+      setUiFilters((prev) => ({
+        ...prev,
+        customDateRange: range,
+      }));
+    },
+    [setUiFilters]
+  );
+
+  const setEventStatus = useCallback(
+    (status: import("../../types").EventStatusFilter) => {
+      setUiFilters((prev) => ({
+        ...prev,
+        eventStatus: status,
+      }));
+    },
+    [setUiFilters]
+  );
+
+  return {
+    timePreset: uiFilters.timePreset,
+    customDateRange: uiFilters.customDateRange,
+    eventStatus: uiFilters.eventStatus,
+    setTimePreset,
+    setCustomDateRange,
+    setEventStatus,
   };
 };

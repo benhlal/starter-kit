@@ -299,12 +299,30 @@ export type FeatureKey =
   | "snow-tires"
   | "bluetooth";
 
-export type TimeStatus = "any" | "ongoing" | "upcoming" | "expired";
+export type EventStatusFilter = "any" | "ongoing" | "upcoming" | "completed";
+
+export type TimePreset =
+  | "anytime"
+  | "today"
+  | "tomorrow"
+  | "this-week"
+  | "next-week"
+  | "this-month"
+  | "custom";
+
+export interface DateRange {
+  startDate: string; // ISO date string
+  endDate: string; // ISO date string
+}
 
 export interface UiFilters {
   pickupAt?: string; // ISO
   returnAt?: string; // ISO
-  timeStatus?: TimeStatus;
+  // Status filter (replaces timeStatus)
+  eventStatus: EventStatusFilter;
+  // Time/Calendar filters
+  timePreset: TimePreset;
+  customDateRange?: DateRange;
   // Getaround-style filters repurposed
   vehicleType: VehicleType; // deprecated in UI (kept for backward-compat)
   pickupMethod: PickupMethod; // unchanged for now
