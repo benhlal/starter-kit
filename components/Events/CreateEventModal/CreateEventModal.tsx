@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Platform,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { EventType, EventStatus } from "../../../types";
 import { FirebaseService } from "../../../services/firebase/FirebaseService";
 import { createEventModalStyles } from "./CreateEventModal.styles";
@@ -34,8 +36,8 @@ interface EventFormData {
     address: string;
     venue: string;
   };
-  startDate: string;
-  endDate: string;
+  startDate: Date;
+  endDate: Date;
   maxParticipants: number;
   organizerName: string;
   tags: string;
@@ -60,8 +62,8 @@ const initialFormData: EventFormData = {
     address: "",
     venue: "",
   },
-  startDate: "",
-  endDate: "",
+  startDate: new Date(),
+  endDate: new Date(Date.now() + 3600000), // 1 hour later
   maxParticipants: 100,
   organizerName: "",
   tags: "",
@@ -94,6 +96,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [startDateMode, setStartDateMode] = useState<"date" | "time">("date");
+  const [endDateMode, setEndDateMode] = useState<"date" | "time">("date");
 
   const eventTypes: EventType[] = [
     "treasure-hunt",
@@ -140,7 +146,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       Alert.alert("Validation Error", "End date is required");
       return false;
     }
-    if (new Date(formData.startDate) >= new Date(formData.endDate)) {
+    if (formData.startDate >= formData.endDate) {
       Alert.alert("Validation Error", "End date must be after start date");
       return false;
     }
@@ -173,8 +179,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           address: formData.location.address.trim(),
           venue: formData.location.venue.trim(),
         },
-        startDate: formData.startDate,
-        endDate: formData.endDate,
+        startDate: formData.startDate.toISOString(),
+        endDate: formData.endDate.toISOString(),
         maxParticipants: formData.maxParticipants,
         currentParticipants: 0,
         participants: [],
@@ -346,24 +352,54 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
             <View style={createEventModalStyles.inputGroup}>
               <Text style={createEventModalStyles.label}>Start Date *</Text>
-              <TextInput
+              <TouchableOpacity
                 style={createEventModalStyles.input}
-                value={formData.startDate}
-                onChangeText={(text) => handleInputChange("startDate", text)}
-                placeholder="YYYY-MM-DDTHH:MM:SSZ"
-                placeholderTextColor="#999"
-              />
+                onPress={() => setShowStartDatePicker(true)}
+              >
+                <Text style={createEventModalStyles.dateText}>
+                  {formData.startDate.toLocaleDateString()}{" "}
+                  {formData.startDate.toLocaleTimeString()}
+                </Text>
+              </TouchableOpacity>
+              {showStartDatePicker && (
+                <DateTimePicker
+                  value={formData.startDate}
+                  mode={startDateMode}
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowStartDatePicker(false);
+                    if (selectedDate) {
+                      handleInputChange("startDate", selectedDate);
+                    }
+                  }}
+                />
+              )}
             </View>
 
             <View style={createEventModalStyles.inputGroup}>
               <Text style={createEventModalStyles.label}>End Date *</Text>
-              <TextInput
+              <TouchableOpacity
                 style={createEventModalStyles.input}
-                value={formData.endDate}
-                onChangeText={(text) => handleInputChange("endDate", text)}
-                placeholder="YYYY-MM-DDTHH:MM:SSZ"
-                placeholderTextColor="#999"
-              />
+                onPress={() => setShowEndDatePicker(true)}
+              >
+                <Text style={createEventModalStyles.dateText}>
+                  {formData.endDate.toLocaleDateString()}{" "}
+                  {formData.endDate.toLocaleTimeString()}
+                </Text>
+              </TouchableOpacity>
+              {showEndDatePicker && (
+                <DateTimePicker
+                  value={formData.endDate}
+                  mode={endDateMode}
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowEndDatePicker(false);
+                    if (selectedDate) {
+                      handleInputChange("endDate", selectedDate);
+                    }
+                  }}
+                />
+              )}
             </View>
           </View>
 

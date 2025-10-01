@@ -5,7 +5,17 @@
  * Usage: node scripts/migrate-data.js [--dry-run] [--clear] [--batch-size=10]
  */
 
-const { DataMigrationService } = require("../utils/dataMigration");
+// For now, let's create a simplified migration directly in this file
+// since we can't easily require TypeScript files from Node.js
+
+const { FirebaseService } = require("../services/firebase/FirebaseService");
+const {
+  mockEvents,
+  mockEventLocations,
+  mockCoins,
+  mockUserProfiles,
+  mockAchievements,
+} = require("../mocks/data/mockResponses");
 
 async function main() {
   const args = process.argv.slice(2);

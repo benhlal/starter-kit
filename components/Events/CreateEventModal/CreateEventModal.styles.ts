@@ -118,4 +118,8 @@ export const createEventModalStyles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
   },
+  dateText: {
+    color: "#333333",
+    fontSize: 16,
+  },
 });
