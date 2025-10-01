@@ -192,8 +192,17 @@ export const EventItem: React.FC<EventItemProps> = ({
   return (
     <View style={[styles.card, isExpired && styles.cardExpired]}>
       <Image
-        source={{ uri: event.img }}
+        source={{
+          uri:
+            event.img ||
+            event.image ||
+            "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&q=80",
+        }}
         style={[styles.image, isExpired && styles.imageExpired]}
+        defaultSource={require("../../../assets/wood.jpg")}
+        onError={() =>
+          console.log("Failed to load image:", event.img || event.image)
+        }
       />
       <Text style={styles.title}>{event.name}</Text>
       {statusLabel ? (

@@ -69,6 +69,7 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
   const [whenOpen, setWhenOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [createEventModalVisible, setCreateEventModalVisible] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   // const { userProfile } = useUserProfile(); // TODO: Use for user-specific features
   const { selectedLocation } = useLocationFilter();
   const { currentUser } = useAuthUser();
@@ -243,12 +244,80 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
     setConfirmOpen({ title: "Participate", fee });
   };
 
-  // Apply filters including time status and when preset
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchEvents();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Apply filters and sorting by start time (most recent first)
   const filteredEvents = useMemo(() => {
-    // For now, return all events to avoid mutation errors
-    // TODO: Implement proper filtering later
-    return events || [];
-  }, [events]);
+    if (!events || events.length === 0) {
+      return [];
+    }
+
+    // Helper function to get timestamp from event date
+    const getTimestamp = (eventDate: any) => {
+      if (!eventDate) {
+        return 0;
+      }
+
+      // Handle Firebase Timestamp objects
+      if (typeof eventDate === "object" && eventDate !== null) {
+        if (typeof eventDate.toDate === "function") {
+          return eventDate.toDate().getTime();
+        }
+        if (typeof eventDate.seconds === "number") {
+          return eventDate.seconds * 1000;
+        }
+        if (eventDate.getTime) {
+          return eventDate.getTime();
+        }
+      }
+
+      // Handle ISO string dates
+      const timestamp = Date.parse(eventDate);
+      return Number.isNaN(timestamp) ? 0 : timestamp;
+    };
+
+    // Helper function to determine event status
+    const getEventStatus = (event: any) => {
+      const now = Date.now();
+      const startMs = getTimestamp(event.startDate);
+      const endMs = getTimestamp(event.endDate);
+
+      if (endMs && endMs < now) {
+        return "completed";
+      }
+      if (startMs && startMs <= now && (!endMs || endMs >= now)) {
+        return "ongoing";
+      }
+      if (startMs && startMs > now) {
+        return "upcoming";
+      }
+      return "upcoming"; // Default fallback
+    };
+
+    // Filter events by status first
+    let filtered = [...events];
+
+    if (eventStatus !== "any") {
+      filtered = filtered.filter((event) => {
+        const status = getEventStatus(event);
+        return status === eventStatus;
+      });
+    }
+
+    // Sort by start time descending (most recent first)
+    return filtered.sort((a, b) => {
+      const aTime = getTimestamp(a.startDate);
+      const bTime = getTimestamp(b.startDate);
+      return bTime - aTime;
+    });
+  }, [events, eventStatus]);
 
   return (
     <View style={screenStyles.container}>
@@ -394,6 +463,8 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
         onScrollDirectionChange={(dir) => setVisible(dir === "up")}
         topInset={140}
         onParticipate={handleParticipate}
+        onRefresh={handleRefresh}
+        refreshing={isRefreshing}
       />
 
       {/* Fancy BottomSheet confirm dialog */}

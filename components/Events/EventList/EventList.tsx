@@ -5,6 +5,7 @@ import {
   ListRenderItem,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  RefreshControl,
 } from "react-native";
 import { Event, FocusLocation } from "../../../types";
 import { EventItem } from "../EventItem/EventItem";
@@ -16,6 +17,8 @@ export interface EventListProps {
   onScrollDirectionChange?: (dir: "up" | "down") => void;
   topInset?: number; // padding to avoid overlay collisions (e.g., floating filters)
   onParticipate?: (event: Event) => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 export const EventList: React.FC<EventListProps> = ({
@@ -24,6 +27,8 @@ export const EventList: React.FC<EventListProps> = ({
   onScrollDirectionChange,
   topInset = 64,
   onParticipate,
+  onRefresh,
+  refreshing = false,
 }) => {
   const handleMapPress = (location: FocusLocation) => {
     if (onEventPress) {
@@ -75,6 +80,17 @@ export const EventList: React.FC<EventListProps> = ({
         ]}
         onScroll={onScroll}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#D946EF"
+            colors={["#D946EF"]}
+            progressBackgroundColor="#1C1C1C"
+            title="Pull to refresh events..."
+            titleColor="#EDEDED"
+          />
+        }
       />
     </View>
   );

@@ -1,17 +1,22 @@
 import firestore from "@react-native-firebase/firestore";
 
-// AR coin hunting themed images - real city locations
+// AR coin hunting themed images - high quality city and adventure locations
 const sampleImages = [
-  "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400", // NYC streets
-  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400", // Mountain landscape
-  "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=400", // City downtown
-  "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400", // City skyline
-  "https://images.unsplash.com/photo-1516483638261-f4dbbd436418?w=400", // Forest path
-  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400", // Desert sunset
-  "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400", // Waterfront city
-  "https://images.unsplash.com/photo-1554223090-74785ad8b2c3?w=400", // Marina/harbor
-  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400", // Urban bridge
-  "https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=400", // City park
+  "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&q=80", // NYC streets
+  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80", // Mountain landscape
+  "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800&q=80", // City downtown
+  "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800&q=80", // City skyline
+  "https://images.unsplash.com/photo-1516483638261-f4dbbd436418?w=800&q=80", // Forest path
+  "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80", // Waterfront city
+  "https://images.unsplash.com/photo-1554223090-74785ad8b2c3?w=800&q=80", // Marina/harbor
+  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80", // Urban bridge
+  "https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=800&q=80", // City park
+  "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=800&q=80", // Urban adventure
+  "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800&q=80", // City exploration
+  "https://images.unsplash.com/photo-1542931565-e8bdd762a97b?w=800&q=80", // Tech/AR themed
+  "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80", // Modern city
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80", // Urban lifestyle
+  "https://images.unsplash.com/photo-1494522358652-f30e61a60313?w=800&q=80", // Adventure/treasure hunt
 ];
 
 // AR Coin Hunting event templates
@@ -143,7 +148,7 @@ function getRandomElement(array: any[]) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function generateRandomEvent(index: number) {
+function generateRandomEvent(_index: number) {
   const template = getRandomElement(eventTemplates);
   const coords = locationCoords[template.region as keyof typeof locationCoords];
 
@@ -205,6 +210,7 @@ function generateRandomEvent(index: number) {
     currentParticipants: Math.floor(Math.random() * 30) + 1, // 1-30 current
     isActive: status !== "completed",
     image: getRandomElement(sampleImages),
+    img: getRandomElement(sampleImages), // Legacy compatibility
     rewards: {
       coins: Math.floor(Math.random() * 1000) + 200, // 200-1200 coins for AR hunts
       xp: Math.floor(Math.random() * 150) + 75, // 75-225 xp
