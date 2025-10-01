@@ -429,6 +429,9 @@ const MapScreen: React.FC<{
       const eventMarker = eventLocations.find((loc: EventLocation) => {
         const coord = loc.coordinate ?? loc.location;
         return (
+          coord &&
+          coord.latitude !== undefined &&
+          coord.longitude !== undefined &&
           Math.abs(coord.latitude - focusLocation.latitude) < 0.01 &&
           Math.abs(coord.longitude - focusLocation.longitude) < 0.01
         );

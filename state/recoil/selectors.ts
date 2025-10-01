@@ -16,7 +16,8 @@ export const nearbyEventsSelector = selector({
 
     // TODO: Implement geolocation filtering
     // For now, return all events sorted by distance (mock)
-    return events.sort((_a, _b) => {
+    // Create a copy to avoid mutating the original array
+    return [...events].sort((_a, _b) => {
       // Mock distance calculation
       return Math.random() - 0.5;
     });

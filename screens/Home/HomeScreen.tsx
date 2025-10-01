@@ -5,10 +5,9 @@ import EventScreen from "../Events/EventScreen";
 import MapScreen from "../Map/MapScreen";
 import BottomNav from "../../components/Home/BottomNav/BottomNav";
 import { styles } from "./HomeScreen.styles";
-import BottomSheet from "../../components/Filters/Sheet/BottomSheet";
-import { StyleSheet } from "react-native";
 import LoginScreen from "../Auth/LoginScreen";
 import { useAuthUser } from "../../state/recoil/hooks";
+import { CreateEventModal } from "../../components/Events/CreateEventModal";
 
 const HomeScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"Home" | "Account">("Home");
@@ -27,6 +26,16 @@ const HomeScreen: React.FC = () => {
       setShowMap(false);
       setShouldRenderMap(false);
     }
+  };
+
+  const handleBack = () => {
+    if (showMap) {
+      // If map is showing, go back to events list
+      setShowMap(false);
+      setShouldRenderMap(false);
+      setFocusLocation(undefined);
+    }
+    // If no map is showing, the back button shouldn't appear
   };
 
   const handleMapToggle = (location?: {
@@ -65,7 +74,10 @@ const HomeScreen: React.FC = () => {
       default:
         return (
           <View style={styles.content}>
-            <EventScreen setActiveTab={handleMapToggle} />
+            <EventScreen
+              setActiveTab={handleMapToggle}
+              onBack={showMap ? handleBack : undefined}
+            />
             {/* Pre-render off-screen, then show instantly without animation */}
             {shouldRenderMap && (
               <View
@@ -95,29 +107,15 @@ const HomeScreen: React.FC = () => {
             setActiveTab={handleTabChange}
             onCreateEvent={() => setCreateOpen(true)}
           />
-          <BottomSheet
-            visible={createOpen}
-            title="Create Event"
+          <CreateEventModal
+            isVisible={createOpen}
             onClose={() => setCreateOpen(false)}
-            maxHeightPercent={0.5}
-          >
-            {/* Fancy create dialog content placeholder */}
-            <View style={createStyles.wrap}>
-              <View style={createStyles.card}>
-                <View style={createStyles.rowBetween}>
-                  <View>
-                    <View style={createStyles.shimmerShort} />
-                    <View style={createStyles.shimmerLong} />
-                  </View>
-                  <View style={createStyles.thumb} />
-                </View>
-              </View>
-              <View style={createStyles.card}>
-                <View style={createStyles.shimmerMid} />
-                <View style={createStyles.shimmerWide} />
-              </View>
-            </View>
-          </BottomSheet>
+            onEventCreated={(eventId) => {
+              console.log("Event created with ID:", eventId);
+              setCreateOpen(false);
+              // TODO: Refresh events list or navigate to new event
+            }}
+          />
         </>
       )}
     </View>
@@ -125,40 +123,3 @@ const HomeScreen: React.FC = () => {
 };
 
 export default HomeScreen;
-
-const createStyles = StyleSheet.create({
-  wrap: { gap: 12 },
-  card: { backgroundColor: "#1C1C1C", padding: 12, borderRadius: 10 },
-  rowBetween: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  shimmerShort: {
-    height: 8,
-    width: 120,
-    backgroundColor: "#2A2A2A",
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  shimmerLong: {
-    height: 8,
-    width: 200,
-    backgroundColor: "#2A2A2A",
-    borderRadius: 4,
-  },
-  thumb: { width: 40, height: 40, borderRadius: 8, backgroundColor: "#2A2A2A" },
-  shimmerMid: {
-    height: 8,
-    width: 160,
-    backgroundColor: "#2A2A2A",
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  shimmerWide: {
-    height: 8,
-    width: 260,
-    backgroundColor: "#2A2A2A",
-    borderRadius: 4,
-  },
-});

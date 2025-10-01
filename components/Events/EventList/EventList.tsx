@@ -31,6 +31,7 @@ export const EventList: React.FC<EventListProps> = ({
       const event = events.find((e) => {
         const coord = e.coordinate ?? e.location;
         return (
+          coord &&
           coord.latitude === location.latitude &&
           coord.longitude === location.longitude
         );

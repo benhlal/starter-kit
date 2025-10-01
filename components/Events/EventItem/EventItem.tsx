@@ -25,12 +25,70 @@ export const EventItem: React.FC<EventItemProps> = ({
   // Time status computation
   const now = Date.now();
   const startMs = useMemo(() => {
-    const t = Date.parse(event.startDate);
-    return Number.isNaN(t) ? undefined : t;
+    if (!event.startDate) {
+      return undefined;
+    }
+    try {
+      // Handle Firebase Timestamp objects
+      if (
+        typeof event.startDate === "object" &&
+        event.startDate !== null &&
+        typeof (event.startDate as any).toDate === "function"
+      ) {
+        return (event.startDate as any).toDate().getTime();
+      }
+      // Handle Firebase Timestamp with seconds/nanoseconds
+      if (
+        typeof event.startDate === "object" &&
+        event.startDate !== null &&
+        typeof (event.startDate as any).seconds === "number"
+      ) {
+        return (event.startDate as any).seconds * 1000;
+      }
+      // Handle Date objects
+      if (event.startDate && (event.startDate as any).getTime) {
+        return (event.startDate as any).getTime();
+      }
+      // Handle ISO string dates
+      const t = Date.parse(event.startDate as string);
+      return Number.isNaN(t) ? undefined : t;
+    } catch (error) {
+      console.warn("Error parsing startDate:", error, event.startDate);
+      return undefined;
+    }
   }, [event.startDate]);
   const endMs = useMemo(() => {
-    const t = Date.parse(event.endDate);
-    return Number.isNaN(t) ? undefined : t;
+    if (!event.endDate) {
+      return undefined;
+    }
+    try {
+      // Handle Firebase Timestamp objects
+      if (
+        typeof event.endDate === "object" &&
+        event.endDate !== null &&
+        typeof (event.endDate as any).toDate === "function"
+      ) {
+        return (event.endDate as any).toDate().getTime();
+      }
+      // Handle Firebase Timestamp with seconds/nanoseconds
+      if (
+        typeof event.endDate === "object" &&
+        event.endDate !== null &&
+        typeof (event.endDate as any).seconds === "number"
+      ) {
+        return (event.endDate as any).seconds * 1000;
+      }
+      // Handle Date objects
+      if (event.endDate && (event.endDate as any).getTime) {
+        return (event.endDate as any).getTime();
+      }
+      // Handle ISO string dates
+      const t = Date.parse(event.endDate as string);
+      return Number.isNaN(t) ? undefined : t;
+    } catch (error) {
+      console.warn("Error parsing endDate:", error, event.endDate);
+      return undefined;
+    }
   }, [event.endDate]);
   const isExpired = endMs !== undefined ? endMs < now : false;
   const isOngoing = (() => {
@@ -158,27 +216,101 @@ export const EventItem: React.FC<EventItemProps> = ({
       {event.balance ? (
         <Text style={styles.detail}>{event.balance}</Text>
       ) : null}
+      {/* Total Prize Pool - FIRST and COLORED */}
+      {event.rewards ? (
+        <Text style={styles.prizePool}>
+          💰 Total Prize:{" "}
+          {event.rewards.coins +
+            (event.rewards.experience || (event.rewards as any).xp || 0) *
+              2}{" "}
+          coins
+        </Text>
+      ) : null}
+
       {/* Participants */}
       <Text style={styles.detail}>👥 Participants: {participantsText}</Text>
-      {/* Type, Radius, Rewards */}
-      <Text style={styles.detail}>🏷️ Type: {event.type}</Text>
-      {typeof (event as any).radius !== "undefined" ? (
-        <Text style={styles.detail}>📏 Radius: {(event as any).radius} m</Text>
-      ) : null}
-      {event.rewards ? (
+
+      {/* Hunt Type - Dynamic with Tag Icon */}
+      <Text style={styles.detail}>
+        🏷️ Type:{" "}
+        {(event as any).huntDetails?.difficulty === "Easy"
+          ? "Flash Hunt"
+          : (event as any).huntDetails?.difficulty === "Hard"
+          ? "Epic Journey Hunt"
+          : "Adventure Hunt"}
+      </Text>
+
+      {/* Terrain */}
+      <Text style={styles.detail}>
+        🏞️ Terrain:{" "}
+        {(event as any).huntDetails?.terrain ||
+          (event as any).terrain ||
+          "Urban"}
+      </Text>
+
+      {/* Difficulty */}
+      <Text style={styles.detail}>
+        ⭐ Difficulty:{" "}
+        {(event as any).huntDetails?.difficulty ||
+          (event as any).difficulty ||
+          "Medium"}
+      </Text>
+
+      {/* Event Duration */}
+      <Text style={styles.detail}>
+        ⏳ Duration:{" "}
+        {(() => {
+          if (startMs === undefined || endMs === undefined) {
+            return "TBD";
+          }
+          const durationMs = endMs - startMs;
+          if (durationMs <= 0) {
+            return "TBD";
+          }
+
+          const hours = Math.floor(durationMs / (1000 * 60 * 60));
+          const days = Math.floor(hours / 24);
+          const remainingHours = hours % 24;
+
+          if (days > 0) {
+            return remainingHours > 0
+              ? `${days}d ${remainingHours}h`
+              : `${days} day${days > 1 ? "s" : ""}`;
+          } else if (hours > 0) {
+            return `${hours} hour${hours > 1 ? "s" : ""}`;
+          } else {
+            const minutes = Math.floor(durationMs / (1000 * 60));
+            return `${minutes} min${minutes > 1 ? "s" : ""}`;
+          }
+        })()}
+      </Text>
+
+      {/* Hunt Range */}
+      {(event as any).huntDetails?.range ? (
         <Text style={styles.detail}>
-          🎁 Rewards: {event.rewards.coins} coins, {event.rewards.experience} XP
+          📍 Range: {(event as any).huntDetails.range}km radius
+        </Text>
+      ) : typeof (event as any).radius !== "undefined" ? (
+        <Text style={styles.detail}>
+          📏 Range: {Math.round((event as any).radius / 1000)}km radius
         </Text>
       ) : null}
-      {/* Countdown / timing */}
-      {isExpired ? (
-        <Text style={styles.expiredText}>⏰ This event has ended</Text>
-      ) : countdown ? (
-        <Text style={isOngoing ? styles.ongoingText : styles.planned}>
-          {isOngoing ? "⏱️ Ends in: " : "🗓️ Starts in: "}
-          {countdown}
-        </Text>
-      ) : null}
+      {/* Dynamic Status with Countdown */}
+      <Text style={styles.detail}>
+        {isExpired ? (
+          "⏰ Status: Expired"
+        ) : isOngoing ? (
+          <>
+            ⏱️ Ends in:{" "}
+            <Text style={styles.countdown}>{countdown || "Soon"}</Text>
+          </>
+        ) : (
+          <>
+            🗓️ Starts in:{" "}
+            <Text style={styles.countdown}>{countdown || "Soon"}</Text>
+          </>
+        )}
+      </Text>
       {/* Distance (legacy) */}
       {event.distance ? (
         <Text style={styles.distance}>📍 {event.distance}</Text>

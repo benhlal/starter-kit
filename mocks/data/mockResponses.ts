@@ -63,7 +63,7 @@ export const mockEvents: Event[] = [
       "https://images.pexels.com/photos/338515/pexels-photo-338515.jpeg?auto=compress&w=600",
     img: "https://images.pexels.com/photos/338515/pexels-photo-338515.jpeg?auto=compress&w=600", // Legacy support
     rewards: {
-      coins: 1200,
+      coins: 911,
       experience: 500,
       badges: ["First Prize", "Second Prize", "Third Prize"],
     },

@@ -19,6 +19,39 @@ export class FirebaseService {
   private static COINS_COLLECTION = "coins";
   private static USERS_COLLECTION = "users";
 
+  // Helper method to safely convert Firebase document to plain object
+  private static docToObject<T>(doc: any): T {
+    const data = JSON.parse(
+      JSON.stringify({
+        id: doc.id,
+        ...doc.data(),
+      })
+    );
+
+    // Validate event location data if this is an Event
+    if (data.type && data.status) {
+      // This looks like an Event object
+      if (
+        !data.location ||
+        typeof data.location.latitude !== "number" ||
+        typeof data.location.longitude !== "number"
+      ) {
+        console.warn(
+          `Event ${data.id} has invalid location data, using default Paris location`
+        );
+        data.location = {
+          latitude: 48.8566,
+          longitude: 2.3522,
+          address: "Paris, France",
+          venue: "Default Location",
+          ...(data.location || {}),
+        };
+      }
+    }
+
+    return data as T;
+  }
+
   // Events
   static async getEvents(): Promise<Event[]> {
     try {
@@ -27,10 +60,7 @@ export class FirebaseService {
         .orderBy("createdAt", "desc")
         .get();
 
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Event[];
+      return snapshot.docs.map((doc) => this.docToObject<Event>(doc));
     } catch (error) {
       console.error("Error fetching events:", error);
       throw error;
@@ -48,7 +78,7 @@ export class FirebaseService {
         return null;
       }
 
-      return { id: doc.id, ...doc.data() } as Event;
+      return this.docToObject<Event>(doc);
     } catch (error) {
       console.error(`Error fetching event ${id}:`, error);
       throw error;
@@ -79,10 +109,7 @@ export class FirebaseService {
         .collection(this.EVENT_LOCATIONS_COLLECTION)
         .get();
 
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as EventLocation[];
+      return snapshot.docs.map((doc) => this.docToObject<EventLocation>(doc));
     } catch (error) {
       console.error("Error fetching event locations:", error);
       throw error;
@@ -96,10 +123,7 @@ export class FirebaseService {
         .collection(this.COINS_COLLECTION)
         .get();
 
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Coin[];
+      return snapshot.docs.map((doc) => this.docToObject<Coin>(doc));
     } catch (error) {
       console.error("Error fetching coins:", error);
       throw error;
@@ -113,10 +137,7 @@ export class FirebaseService {
         .where("region", "==", region)
         .get();
 
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Coin[];
+      return snapshot.docs.map((doc) => this.docToObject<Coin>(doc));
     } catch (error) {
       console.error(`Error fetching coins for region ${region}:`, error);
       throw error;
@@ -158,10 +179,7 @@ export class FirebaseService {
         return null;
       }
 
-      return {
-        id: doc.id,
-        ...doc.data(),
-      };
+      return this.docToObject(doc);
     } catch (error) {
       console.error(`Error fetching user profile ${userId}:`, error);
       throw error;
@@ -219,10 +237,9 @@ export class FirebaseService {
       .orderBy("createdAt", "desc")
       .onSnapshot(
         (snapshot) => {
-          const events = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as Event[];
+          const events = snapshot.docs.map((doc) =>
+            this.docToObject<Event>(doc)
+          );
           callback(events);
         },
         (error) => {
@@ -241,10 +258,7 @@ export class FirebaseService {
       .onSnapshot(
         (doc) => {
           if (doc.exists) {
-            callback({
-              id: doc.id,
-              ...doc.data(),
-            });
+            callback(this.docToObject(doc));
           }
         },
         (error) => {

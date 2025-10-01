@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Modal,
 } from "react-native";
 import {
   useUserProfile,
@@ -15,6 +16,7 @@ import {
   useAppState,
 } from "../../state/recoil/hooks";
 import { styles } from "./ProfileScreen.styles";
+import MigrationScreen from "../../components/Migration";
 
 interface Achievement {
   id: string;
@@ -34,6 +36,7 @@ const ProfileScreen: React.FC = () => {
   const { collectedCoinsCount } = useCoins();
   const { appConfig, toggleMockMode } = useAppState();
   const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
 
   useEffect(() => {
     // Fetch user profile when component mounts
@@ -102,6 +105,9 @@ const ProfileScreen: React.FC = () => {
           "Mock Mode",
           `Mock mode ${appConfig.useMockData ? "enabled" : "disabled"}`
         );
+        break;
+      case "migration":
+        setShowMigrationModal(true);
         break;
       default:
         break;
@@ -264,6 +270,19 @@ const ProfileScreen: React.FC = () => {
 
       <TouchableOpacity
         style={styles.settingItem}
+        onPress={() => handleSettingPress("migration")}
+      >
+        <View style={styles.settingLeft}>
+          <View style={styles.settingIcon}>
+            <Text style={styles.settingIconText}>🚀</Text>
+          </View>
+          <Text style={styles.settingText}>Database Migration</Text>
+        </View>
+        <Text style={styles.settingArrow}>›</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.settingItem}
         onPress={() => handleSettingPress("help")}
       >
         <View style={styles.settingLeft}>
@@ -306,6 +325,42 @@ const ProfileScreen: React.FC = () => {
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal
+        visible={showMigrationModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowMigrationModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "#1C1C1C" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: 20,
+              paddingTop: 60,
+              borderBottomWidth: 1,
+              borderBottomColor: "#333333",
+            }}
+          >
+            <Text style={{ color: "#EDEDED", fontSize: 20, fontWeight: "600" }}>
+              Database Migration
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowMigrationModal(false)}
+              style={{
+                padding: 8,
+                borderRadius: 20,
+                backgroundColor: "#333333",
+              }}
+            >
+              <Text style={{ color: "#EDEDED", fontSize: 16 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <MigrationScreen />
+        </View>
+      </Modal>
     </View>
   );
 };

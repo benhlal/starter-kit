@@ -155,12 +155,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 0,
+    bottom: 0, // Align with screen bottom
     backgroundColor: "#151515",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     overflow: "hidden",
     elevation: 8,
+    paddingBottom: 90, // Add padding to cover nav bar (typical nav bar height ~80-90px)
   },
   grabber: {
     alignItems: "center",
@@ -186,12 +187,13 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingTop: 24,
+    paddingBottom: 24, // Normal padding since sheet itself has bottom padding now
   },
   footer: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 10,
+    paddingBottom: 16, // Normal footer padding since sheet handles nav bar coverage
     borderTopWidth: 1,
     borderTopColor: "#2a2a2a",
     backgroundColor: "#151515",

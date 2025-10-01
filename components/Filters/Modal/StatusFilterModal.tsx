@@ -1,12 +1,6 @@
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-} from "react-native";
-import { FilterModal } from "./FilterModal";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import BottomSheet from "../Sheet/BottomSheet";
 import type { EventStatusFilter } from "../../../types";
 
 interface StatusFilterModalProps {
@@ -89,29 +83,26 @@ export const StatusFilterModal: React.FC<StatusFilterModalProps> = ({
   };
 
   return (
-    <FilterModal visible={visible} title="Event Status" onClose={onClose}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.container}>
-          <Text style={styles.sectionTitle}>
-            Filter events by their current status
-          </Text>
+    <BottomSheet
+      visible={visible}
+      title="Event Status"
+      onClose={onClose}
+      maxHeightPercent={0.7}
+    >
+      <View style={styles.container}>
+        <Text style={styles.sectionTitle}>
+          Filter events by their current status
+        </Text>
 
-          <View style={styles.statusList}>
-            {statusOptions.map(renderStatusItem)}
-          </View>
+        <View style={styles.statusList}>
+          {statusOptions.map(renderStatusItem)}
         </View>
-      </ScrollView>
-    </FilterModal>
+      </View>
+    </BottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollView: {
-    maxHeight: 400,
-  },
   container: {
     paddingVertical: 8,
   },

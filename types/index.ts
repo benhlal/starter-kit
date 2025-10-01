@@ -84,7 +84,24 @@ export interface Event {
     items?: string[];
   };
   visibility: "public" | "private" | "friends";
-  // Legacy fields
+  // AR Coin Hunt specific fields
+  huntDetails?: {
+    difficulty: "Easy" | "Medium" | "Hard";
+    terrain:
+      | "Urban"
+      | "Forest"
+      | "Beach"
+      | "Mountain"
+      | "Desert"
+      | "Park"
+      | "Historical";
+    range: number; // in kilometers
+    totalPrizePool?: number;
+    huntType?: "Flash Hunt" | "Adventure Hunt" | "Epic Journey Hunt";
+  };
+  // Legacy fields (also support flat terrain/difficulty for backward compatibility)
+  terrain?: string;
+  difficulty?: string;
   balance?: string;
   subscribers?: string;
   distance?: string;

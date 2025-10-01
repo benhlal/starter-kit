@@ -12,7 +12,6 @@ interface TopSearchProps {
   whenLabel?: string;
   onPressLocation?: () => void;
   onPressWhen?: () => void;
-  onPressCreate?: () => void;
   visible?: boolean;
   animatedValue?: Animated.Value;
   topOffset?: number; // allow screens to shift down if needed
@@ -23,7 +22,6 @@ const TopSearch: React.FC<TopSearchProps> = ({
   whenLabel = "When?",
   onPressLocation,
   onPressWhen,
-  onPressCreate,
   visible = true,
   animatedValue,
   topOffset,
@@ -73,9 +71,6 @@ const TopSearch: React.FC<TopSearchProps> = ({
             {whenLabel}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.createButton} onPress={onPressCreate}>
-          <Text style={styles.createIcon}>+</Text>
-        </TouchableOpacity>
       </View>
     </Animated.View>
   );
@@ -108,20 +103,6 @@ const styles = StyleSheet.create({
   iconAccent: { color: "#D946EF" },
   pillText: { color: "#EDEDED", fontWeight: "700" },
   accentText: { color: "#D946EF" },
-  createButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#D946EF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 8,
-  },
-  createIcon: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "600",
-  },
 });
 
 export default TopSearch;

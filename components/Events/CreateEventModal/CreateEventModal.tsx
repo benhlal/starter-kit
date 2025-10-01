@@ -49,6 +49,17 @@ interface EventFormData {
   arModelUrl: string;
   minLevel: number;
   requiredItems: string;
+  // Hunt-specific fields
+  huntDifficulty: "Easy" | "Medium" | "Hard";
+  huntTerrain:
+    | "Urban"
+    | "Forest"
+    | "Beach"
+    | "Mountain"
+    | "Desert"
+    | "Park"
+    | "Historical";
+  huntRange: number;
 }
 
 const initialFormData: EventFormData = {
@@ -75,6 +86,10 @@ const initialFormData: EventFormData = {
   arModelUrl: "",
   minLevel: 1,
   requiredItems: "",
+  // Hunt-specific initial values
+  huntDifficulty: "Medium",
+  huntTerrain: "Urban",
+  huntRange: 2,
 };
 
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
@@ -216,6 +231,23 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             .filter((item) => item.length > 0),
         },
         visibility: formData.visibility,
+        huntDetails: {
+          difficulty: formData.huntDifficulty,
+          terrain: formData.huntTerrain,
+          range: formData.huntRange,
+          totalPrizePool: formData.rewardCoins + formData.rewardExperience * 2,
+          huntType: (formData.huntDifficulty === "Easy"
+            ? "Flash Hunt"
+            : formData.huntDifficulty === "Hard"
+            ? "Epic Journey Hunt"
+            : "Adventure Hunt") as
+            | "Flash Hunt"
+            | "Epic Journey Hunt"
+            | "Adventure Hunt",
+        },
+        // Legacy fields for backward compatibility
+        terrain: formData.huntTerrain,
+        difficulty: formData.huntDifficulty,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

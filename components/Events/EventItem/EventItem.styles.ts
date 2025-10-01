@@ -82,6 +82,42 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 6,
   },
+  startTime: {
+    color: "#FFA726",
+    fontSize: 14,
+    marginTop: 4,
+    fontWeight: "600",
+  },
+  ongoingStartTime: {
+    color: "#7BDBFF",
+    fontSize: 13,
+    marginTop: 3,
+    fontWeight: "500",
+  },
+  prizePool: {
+    color: "#FFD700",
+    fontSize: 14,
+    marginTop: 3,
+    fontWeight: "700",
+  },
+  countdown: {
+    color: "#4ECDC4", // Turquoise blue
+    fontSize: 14,
+    marginTop: 3,
+    fontWeight: "600",
+  },
+  difficulty: {
+    color: "#FF6B6B",
+    fontSize: 14,
+    marginTop: 2,
+    fontWeight: "600",
+  },
+  terrain: {
+    color: "#4ECDC4",
+    fontSize: 14,
+    marginTop: 2,
+    fontWeight: "600",
+  },
   actionsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -124,5 +160,17 @@ export const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",
+  },
+  placeholderImage: {
+    backgroundColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  placeholderText: {
+    color: "#FFD700", // Gold color for coin
+    fontSize: 48, // Larger coin emoji
+    textShadowColor: "#FFA500",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 });
