@@ -1,4 +1,10 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, {
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   View,
   StyleSheet,
@@ -31,6 +37,7 @@ import { LocationFilterModal } from "../../components/Filters/Modal/LocationFilt
 import { StatusFilterModal } from "../../components/Filters/Modal/StatusFilterModal";
 import { TimeFilterModal } from "../../components/Filters/Modal/TimeFilterModal";
 import { CreateEventModal } from "../../components/Events/CreateEventModal";
+import { ParticipationModal } from "../../components/Events/ParticipationModal";
 import BottomSheet from "../../components/Filters/Sheet/BottomSheet";
 import TopSearch from "../../components/Filters/TopSearch/TopSearch";
 import { useRecoilState } from "recoil";
@@ -40,6 +47,7 @@ import {
 } from "../../state/recoil/atoms";
 import { populateMoreEvents } from "../../utils/populateEvents";
 import { isAdmin } from "../../utils/userRoles";
+import { participationService } from "../../services/ParticipationService";
 // import { styles } from "./EventScreen.styles"; // TODO: Use when implementing styled components
 
 interface EventScreenProps {
@@ -73,6 +81,37 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
   // const { userProfile } = useUserProfile(); // TODO: Use for user-specific features
   const { selectedLocation } = useLocationFilter();
   const { currentUser } = useAuthUser();
+  const [participationModalVisible, setParticipationModalVisible] =
+    useState(false);
+
+  // Load user data when component mounts or user changes
+  const loadUserData = useCallback(async () => {
+    if (currentUser?.uid) {
+      try {
+        const userProfile = await participationService.getUserProfile(
+          currentUser.uid
+        );
+        if (userProfile) {
+          console.log("👤 Loading user profile:", {
+            coins: userProfile.coins,
+            joinedEvents: userProfile.joinedEvents,
+          });
+          setUserCoins(userProfile.coins);
+          setUserParticipations(userProfile.joinedEvents);
+        }
+      } catch (error) {
+        console.error("Error loading user data:", error);
+      }
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
+
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [userCoins, setUserCoins] = useState(0);
+  const [userParticipations, setUserParticipations] = useState<string[]>([]);
   const {
     timePreset,
     customDateRange,
@@ -235,13 +274,127 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
   };
 
   const handleParticipate = (event: any) => {
-    const fee = event?.rewards?.coins
-      ? `Participation fee: ${Math.max(
-          1,
-          Math.floor(event.rewards.coins / 100)
-        )} coins`
-      : undefined;
-    setConfirmOpen({ title: "Participate", fee });
+    console.log("🎯 Opening participation modal for event:", event.id);
+    // Refresh user data to ensure accurate participation status
+    loadUserData();
+    setSelectedEvent(event);
+    setParticipationModalVisible(true);
+  };
+
+  const handleParticipateConfirm = async (
+    eventId: string,
+    baseFee: number
+  ): Promise<boolean> => {
+    try {
+      if (!selectedEvent) {
+        throw new Error("No event selected");
+      }
+
+      const result = await participationService.participateInEvent(
+        eventId,
+        selectedEvent.name || "AR Coin Hunt",
+        selectedEvent,
+        baseFee
+      );
+
+      if (result.success) {
+        // Update local state with actual fee paid
+        const newBalance = userCoins - result.fee;
+        setUserCoins(newBalance);
+        setUserParticipations([...userParticipations, eventId]);
+
+        // Show success message
+        Alert.alert(
+          "Joined Hunt Successfully!",
+          `${result.message}\nFee Paid: ${result.fee} coins\nNew Balance: ${newBalance} coins`
+        );
+
+        // Refresh user data from server to ensure sync
+        if (currentUser?.uid) {
+          const userProfile = await participationService.getUserProfile(
+            currentUser.uid
+          );
+          if (userProfile) {
+            setUserCoins(userProfile.coins);
+            setUserParticipations(userProfile.joinedEvents);
+          }
+        }
+
+        // Refresh events to update participant count
+        fetchEvents();
+      } else {
+        // Show error message
+        Alert.alert("Cannot Join", result.message);
+      }
+
+      return result.success;
+    } catch (error) {
+      console.error("Participation error:", error);
+      Alert.alert("Error", "Failed to join event. Please try again.");
+      return false;
+    }
+  };
+
+  const handleUnsubscribe = async (eventId: string): Promise<boolean> => {
+    try {
+      if (!selectedEvent) {
+        throw new Error("No event selected");
+      }
+
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      // Check if user has collected coins from this event
+      const hasCollectedCoins =
+        await participationService.hasCollectedCoinsFromEvent(
+          currentUser.uid,
+          eventId
+        );
+
+      const result = await participationService.leaveEvent(
+        eventId,
+        selectedEvent,
+        hasCollectedCoins
+      );
+
+      if (result.success) {
+        // Update local state with actual refund
+        const newBalance = userCoins + result.refund;
+        setUserCoins(newBalance);
+        setUserParticipations(
+          userParticipations.filter((id) => id !== eventId)
+        );
+
+        // Show refund message
+        Alert.alert(
+          "Left Hunt Successfully!",
+          `${result.message}\nRefund: ${result.refund} coins\nNew Balance: ${newBalance} coins`
+        );
+
+        // Refresh user data from server to ensure sync
+        if (currentUser?.uid) {
+          const userProfile = await participationService.getUserProfile(
+            currentUser.uid
+          );
+          if (userProfile) {
+            setUserCoins(userProfile.coins);
+            setUserParticipations(userProfile.joinedEvents);
+          }
+        }
+
+        // Refresh events to update participant count
+        fetchEvents();
+      } else {
+        Alert.alert("Cannot Leave", result.message);
+      }
+
+      return result.success;
+    } catch (error) {
+      console.error("Unsubscribe error:", error);
+      Alert.alert("Error", "Failed to leave event. Please try again.");
+      return false;
+    }
   };
 
   const handleRefresh = async () => {
@@ -301,13 +454,50 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
       return "upcoming"; // Default fallback
     };
 
-    // Filter events by status first
+    // Start with all events
     let filtered = [...events];
 
+    // Apply status filter
     if (eventStatus !== "any") {
       filtered = filtered.filter((event) => {
         const status = getEventStatus(event);
         return status === eventStatus;
+      });
+    }
+
+    // Apply more filters
+    // Filter by subscribed events only
+    if (filters.subscribedOnly) {
+      filtered = filtered.filter((event) =>
+        userParticipations.includes(event.id)
+      );
+    }
+
+    // Filter by minimum participants
+    if (filters.participantsMin > 0) {
+      filtered = filtered.filter((event) => {
+        const participantCount = event.participants?.length || 0;
+        return participantCount >= filters.participantsMin;
+      });
+    }
+
+    // Filter by new events only (created within 7 days)
+    if (filters.newEventsOnly) {
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      filtered = filtered.filter((event) => {
+        const createdAt = getTimestamp(event.createdAt);
+        return createdAt >= sevenDaysAgo;
+      });
+    }
+
+    // Filter by cities
+    if (filters.cities.length > 0) {
+      filtered = filtered.filter((event) => {
+        const eventAddress =
+          event.location?.address || event.location?.venue || "";
+        return filters.cities.some((city) =>
+          eventAddress.toLowerCase().includes(city.toLowerCase())
+        );
       });
     }
 
@@ -317,7 +507,7 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
       const bTime = getTimestamp(b.startDate);
       return bTime - aTime;
     });
-  }, [events, eventStatus]);
+  }, [events, eventStatus, filters, userParticipations]);
 
   return (
     <View style={screenStyles.container}>
@@ -465,6 +655,7 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
         onParticipate={handleParticipate}
         onRefresh={handleRefresh}
         refreshing={isRefreshing}
+        userParticipations={userParticipations}
       />
 
       {/* Fancy BottomSheet confirm dialog */}
@@ -495,6 +686,33 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
           </TouchableOpacity>
         </View>
       </BottomSheet>
+
+      {/* Participation Modal */}
+      <ParticipationModal
+        visible={participationModalVisible}
+        event={selectedEvent}
+        userCoins={userCoins}
+        userId={currentUser?.uid}
+        isParticipant={(() => {
+          const isParticipant = selectedEvent
+            ? userParticipations.includes(selectedEvent.id)
+            : false;
+          console.log("🎯 EventScreen isParticipant calculation:", {
+            selectedEventId: selectedEvent?.id,
+            userParticipations,
+            isParticipant,
+          });
+          return isParticipant;
+        })()}
+        onClose={() => {
+          console.log("🚪 Closing participation modal");
+          // Refresh user data when modal closes to ensure UI is in sync
+          loadUserData();
+          setParticipationModalVisible(false);
+        }}
+        onParticipate={handleParticipateConfirm}
+        onUnsubscribe={handleUnsubscribe}
+      />
 
       {/* Location filter modal */}
       <LocationFilterModal
@@ -556,8 +774,9 @@ const screenStyles = StyleSheet.create({
   },
   adminButtonsContainer: {
     position: "absolute",
-    top: 60,
+    top: "50%",
     right: 20,
+    transform: [{ translateY: -40 }],
     flexDirection: "column",
     gap: 8,
     zIndex: 1000,

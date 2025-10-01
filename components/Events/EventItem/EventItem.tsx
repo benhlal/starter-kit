@@ -1,27 +1,24 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import { Event, FocusLocation } from "../../../types";
-import { useMapState, useUserProfile } from "../../../state/recoil/hooks";
-import BottomSheet from "../../Filters/Sheet/BottomSheet";
+import { useMapState } from "../../../state/recoil/hooks";
 import { styles } from "./EventItem.styles";
 
 interface EventItemProps {
   event: Event;
   onMapPress?: (location: FocusLocation) => void;
   onParticipate?: (event: Event) => void;
+  isParticipating?: boolean;
 }
 
 export const EventItem: React.FC<EventItemProps> = ({
   event,
   onMapPress,
   onParticipate,
+  isParticipating = false,
 }) => {
   const { setSelectedEvent } = useMapState();
-  const { userProfile } = useUserProfile();
-  const isParticipant = Array.isArray((userProfile as any)?.joinedEvents)
-    ? (userProfile as any).joinedEvents.includes(event.id)
-    : false;
-  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const isParticipant = isParticipating;
   // Time status computation
   const now = Date.now();
   const startMs = useMemo(() => {
@@ -165,11 +162,6 @@ export const EventItem: React.FC<EventItemProps> = ({
   };
 
   const handleParticipatePress = () => {
-    if (isParticipant) {
-      // open unsubscribe confirm
-      setConfirmOpen(true);
-      return;
-    }
     if (onParticipate) {
       onParticipate(event);
     }
@@ -335,7 +327,7 @@ export const EventItem: React.FC<EventItemProps> = ({
             onPress={handleParticipatePress}
           >
             <Text style={styles.participateButtonText}>
-              {isParticipant ? "Subscribed" : "Participate"}
+              {isParticipant ? "Leave Hunt" : "Join Hunt"}
             </Text>
           </TouchableOpacity>
         ) : null}
@@ -343,55 +335,6 @@ export const EventItem: React.FC<EventItemProps> = ({
           <Text style={styles.mapButtonText}>View on Map</Text>
         </TouchableOpacity>
       </View>
-      {/* Unsubscribe confirm */}
-      <BottomSheet
-        visible={confirmOpen}
-        title={"Unsubscribe"}
-        onClose={() => setConfirmOpen(false)}
-        maxHeightPercent={0.3}
-      >
-        <Text style={confirmStyles.message}>
-          Do you want to unsubscribe from this event?
-        </Text>
-        <View style={confirmStyles.row}>
-          <TouchableOpacity
-            style={[confirmStyles.btn, confirmStyles.btnCancel]}
-            onPress={() => setConfirmOpen(false)}
-          >
-            <Text style={confirmStyles.btnText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[confirmStyles.btn, confirmStyles.btnDanger]}
-            onPress={() => {
-              // NOTE: In real app, update backend/profile. Demo: just close.
-              setConfirmOpen(false);
-            }}
-          >
-            <Text style={confirmStyles.btnText}>Unsubscribe</Text>
-          </TouchableOpacity>
-        </View>
-      </BottomSheet>
     </View>
   );
-};
-
-const confirmStyles = {
-  message: { color: "#EDEDED", marginBottom: 12 } as const,
-  row: { flexDirection: "row" as const, columnGap: 12 } as const,
-  btn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  } as const,
-  btnCancel: {
-    backgroundColor: "#1C1C1C",
-    borderWidth: 1,
-    borderColor: "#373737",
-  },
-  btnDanger: {
-    backgroundColor: "#E53935",
-  },
-  btnText: { color: "#FFFFFF", fontWeight: "700" as const },
 };

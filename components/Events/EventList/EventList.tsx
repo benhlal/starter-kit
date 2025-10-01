@@ -19,6 +19,7 @@ export interface EventListProps {
   onParticipate?: (event: Event) => void;
   onRefresh?: () => void;
   refreshing?: boolean;
+  userParticipations?: string[]; // Array of event IDs the user is participating in
 }
 
 export const EventList: React.FC<EventListProps> = ({
@@ -29,6 +30,7 @@ export const EventList: React.FC<EventListProps> = ({
   onParticipate,
   onRefresh,
   refreshing = false,
+  userParticipations = [],
 }) => {
   const handleMapPress = (location: FocusLocation) => {
     if (onEventPress) {
@@ -65,6 +67,7 @@ export const EventList: React.FC<EventListProps> = ({
       event={item}
       onMapPress={handleMapPress}
       onParticipate={onParticipate}
+      isParticipating={userParticipations.includes(item.id)}
     />
   );
 
