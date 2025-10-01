@@ -31,6 +31,7 @@ import { MoreFiltersModal } from "../../components/Filters/Modal/MoreFiltersModa
 import { LocationFilterModal } from "../../components/Filters/Modal/LocationFilterModal";
 import { StatusFilterModal } from "../../components/Filters/Modal/StatusFilterModal";
 import { TimeFilterModal } from "../../components/Filters/Modal/TimeFilterModal";
+import { CreateEventModal } from "../../components/Events/CreateEventModal";
 import BottomSheet from "../../components/Filters/Sheet/BottomSheet";
 import TopSearch from "../../components/Filters/TopSearch/TopSearch";
 import { useRecoilState } from "recoil";
@@ -59,6 +60,7 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
   const [locationOpen, setLocationOpen] = useState(false);
   const [whenOpen, setWhenOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [createEventModalVisible, setCreateEventModalVisible] = useState(false);
   const { userProfile } = useUserProfile();
   const { selectedLocation } = useLocationFilter();
   const {
@@ -377,6 +379,7 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
         whenLabel={whenLabel}
         onPressLocation={() => setLocationOpen(true)}
         onPressWhen={() => setWhenOpen(true)}
+        onPressCreate={() => setCreateEventModalVisible(true)}
         visible={filtersVisible}
         animatedValue={filtersOpacity}
       />
@@ -479,6 +482,17 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab }) => {
         onChooseOnMap={() => {
           setSelectMode(true);
           setActiveTab?.();
+        }}
+      />
+
+      {/* Create Event Modal */}
+      <CreateEventModal
+        isVisible={createEventModalVisible}
+        onClose={() => setCreateEventModalVisible(false)}
+        onEventCreated={(eventId) => {
+          console.log("Event created with ID:", eventId);
+          setCreateEventModalVisible(false);
+          // TODO: Refresh events list or navigate to new event
         }}
       />
     </View>

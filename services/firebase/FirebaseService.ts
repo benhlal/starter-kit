@@ -252,4 +252,92 @@ export class FirebaseService {
         }
       );
   }
+
+  // Additional methods for data migration
+  static async createUser(userData: any): Promise<string> {
+    try {
+      const docRef = await firestore()
+        .collection(this.USERS_COLLECTION)
+        .add(userData);
+      return docRef.id;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
+  }
+
+  static async createEventLocation(locationData: any): Promise<string> {
+    try {
+      const docRef = await firestore()
+        .collection(this.EVENT_LOCATIONS_COLLECTION)
+        .add(locationData);
+      return docRef.id;
+    } catch (error) {
+      console.error("Error creating event location:", error);
+      throw error;
+    }
+  }
+
+  static async createCoin(coinData: any): Promise<string> {
+    try {
+      const docRef = await firestore()
+        .collection(this.COINS_COLLECTION)
+        .add(coinData);
+      return docRef.id;
+    } catch (error) {
+      console.error("Error creating coin:", error);
+      throw error;
+    }
+  }
+
+  static async createAchievement(achievementData: any): Promise<string> {
+    try {
+      const docRef = await firestore()
+        .collection("achievements")
+        .add(achievementData);
+      return docRef.id;
+    } catch (error) {
+      console.error("Error creating achievement:", error);
+      throw error;
+    }
+  }
+
+  static async createRegion(regionData: any): Promise<string> {
+    try {
+      const docRef = await firestore().collection("regions").add(regionData);
+      return docRef.id;
+    } catch (error) {
+      console.error("Error creating region:", error);
+      throw error;
+    }
+  }
+
+  static async createLeaderboard(leaderboardData: any): Promise<string> {
+    try {
+      const docRef = await firestore()
+        .collection("leaderboards")
+        .add(leaderboardData);
+      return docRef.id;
+    } catch (error) {
+      console.error("Error creating leaderboard:", error);
+      throw error;
+    }
+  }
+
+  static async clearCollection(collectionName: string): Promise<void> {
+    try {
+      const snapshot = await firestore().collection(collectionName).get();
+      const batch = firestore().batch();
+
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+      console.log(`Cleared ${snapshot.size} documents from ${collectionName}`);
+    } catch (error) {
+      console.error(`Error clearing collection ${collectionName}:`, error);
+      throw error;
+    }
+  }
 }
