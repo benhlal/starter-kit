@@ -20,6 +20,7 @@ import {
   mapFocusLocationState,
   locationFilterState,
   uiFiltersState,
+  selectedCoinIdState,
 } from "./atoms";
 import {
   nearbyEventsSelector,
@@ -310,6 +311,13 @@ export const useMapState = () => {
     setSelectedEvent,
     setFocusLocation,
   };
+};
+
+// Hook for selected coin id
+export const useSelectedCoin = () => {
+  const [selectedCoinId, setSelectedCoinId] =
+    useRecoilState(selectedCoinIdState);
+  return { selectedCoinId, setSelectedCoinId } as const;
 };
 
 // Hook for managing location filters

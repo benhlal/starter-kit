@@ -38,6 +38,12 @@ export const coinsState = atom<Coin[]>({
   default: [],
 });
 
+// Selected coin for AR
+export const selectedCoinIdState = atom<string | null>({
+  key: "selectedCoinIdState",
+  default: null,
+});
+
 // Loading states
 export const loadingState = atom({
   key: "loadingState",

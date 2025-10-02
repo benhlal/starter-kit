@@ -19,6 +19,9 @@ import MapView, {
   MapPressEvent,
   Polyline,
 } from "react-native-maps";
+import { FirebaseService } from "../../services/firebase/FirebaseService";
+import { isAdmin } from "../../utils/userRoles";
+import { Coin } from "../../types";
 import {
   useEventLocations,
   useMapState,
@@ -31,6 +34,7 @@ import {
   mapCustomLocationState,
 } from "../../state/recoil/atoms";
 import { EventLocation } from "../../types";
+import { useSelectedCoin } from "../../state/recoil/hooks";
 // Generate random coins around current location
 const generateRandomCoins = (
   centerLat: number,
@@ -126,6 +130,9 @@ const MapScreen: React.FC<{
   } | null>(null);
   // Event summary visibility (coins / prize / participants)
   const [showEventSummary, setShowEventSummary] = useState<boolean>(true);
+  const [eventCoins, setEventCoins] = useState<Coin[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [creatingEvent, setCreatingEvent] = useState(false);
 
   // Generate multiple dash segments for a complete dotted circle
   const generateDottedCircleSegments = (
@@ -197,8 +204,9 @@ const MapScreen: React.FC<{
     longitudeDelta: 0.1,
   });
   const { eventLocations, fetchEventLocations } = useEventLocations();
-  const { selectedEvent } = useMapState();
+  const { selectedEvent, setSelectedEvent } = useMapState();
   const { userProfile } = useUserProfile();
+  const { setSelectedCoinId } = useSelectedCoin();
   const [centerOnUser, setCenterOnUser] = useRecoilState(mapCenterOnUserState);
   const [selectMode, setSelectMode] = useRecoilState(
     mapSelectLocationModeState
@@ -206,9 +214,50 @@ const MapScreen: React.FC<{
   const [customLocation, setCustomLocation] = useRecoilState(
     mapCustomLocationState
   );
-  const isParticipant = Array.isArray((userProfile as any)?.joinedEvents)
-    ? (userProfile as any).joinedEvents.includes(selectedEvent?.id || "")
-    : false; // Placeholder: real participant check when profile includes joined events
+  const currentUserId = FirebaseService.getCurrentUser?.()?.uid;
+  const isParticipant = (() => {
+    const joined = Array.isArray((userProfile as any)?.joinedEvents)
+      ? (userProfile as any).joinedEvents
+      : [];
+    const inProfile = joined.includes(selectedEvent?.id || "");
+    const inEvent = Array.isArray((selectedEvent as any)?.participants)
+      ? (selectedEvent as any).participants.includes(currentUserId)
+      : false;
+    return inProfile || inEvent;
+  })();
+  const isUserAdmin = isAdmin(
+    (userProfile as any)?.email ||
+      FirebaseService.getCurrentUser?.()?.email ||
+      null
+  );
+
+  // Fetch coins for the selected event when active and user is participant
+  useEffect(() => {
+    let unsubscribed = false;
+    (async () => {
+      try {
+        if (
+          selectedEvent?.status === "active" &&
+          isParticipant &&
+          selectedEvent.id
+        ) {
+          const coins = await FirebaseService.getCoinsForEvent(
+            selectedEvent.id
+          );
+          if (!unsubscribed) {
+            setEventCoins(coins);
+          }
+        } else {
+          setEventCoins([]);
+        }
+      } catch (e) {
+        console.warn("Failed to load event coins", e);
+      }
+    })();
+    return () => {
+      unsubscribed = true;
+    };
+  }, [selectedEvent?.id, selectedEvent?.status, isParticipant]);
 
   useEffect(() => {
     fetchEventLocations();
@@ -588,14 +637,22 @@ const MapScreen: React.FC<{
           </Marker>
         ))}
 
-        {/* Random coin markers */}
-        {/* Only show random coins when user is a participant of the selected event */}
-        {isParticipant && selectedEvent
-          ? randomCoins.map((coin) => (
+        {/* Event coin markers (from Firestore) */}
+        {isParticipant && selectedEvent?.status === "active"
+          ? eventCoins.map((coin) => (
               <Marker
                 key={coin.id}
-                coordinate={coin.coordinate}
-                onPress={() => handleMarkerPress(coin.id, coin.coordinate)}
+                coordinate={{
+                  latitude: coin.location.latitude,
+                  longitude: coin.location.longitude,
+                }}
+                onPress={() => {
+                  setSelectedCoinId(coin.id);
+                  handleMarkerPress(coin.id, {
+                    latitude: coin.location.latitude,
+                    longitude: coin.location.longitude,
+                  });
+                }}
               >
                 <View style={styles.coinMarker}>
                   <Text style={styles.randomCoinText}>🪙</Text>
@@ -776,6 +833,213 @@ const MapScreen: React.FC<{
           <Text style={styles.floatingButtonText}>≡ List</Text>
         </View>
       </TouchableWithoutFeedback>
+
+      {/* Admin-only: Create ongoing event at current GPS with coins near by */}
+      {isUserAdmin && (
+        <TouchableOpacity
+          style={[
+            styles.floatingButton,
+            styles.devCreateEventButton,
+            creatingEvent && styles.devCreateEventButtonDisabled,
+          ]}
+          disabled={creatingEvent}
+          onPress={async () => {
+            try {
+              if (!userLocation) {
+                Alert.alert(
+                  "GPS not ready",
+                  "We couldn't get your current position yet."
+                );
+                return;
+              }
+              const user = FirebaseService.getCurrentUser?.();
+              const userId = user?.uid;
+              if (!userId) {
+                Alert.alert(
+                  "Not signed in",
+                  "Please sign in to create events."
+                );
+                return;
+              }
+              setCreatingEvent(true);
+
+              const now = new Date();
+              const end = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2h window
+              const eventData: any = {
+                title: "Ongoing AR Hunt",
+                description: "Auto-created nearby test event.",
+                type: "treasure-hunt",
+                status: "active",
+                location: {
+                  latitude: userLocation.latitude,
+                  longitude: userLocation.longitude,
+                  address: "",
+                  venue: "",
+                },
+                startDate: now.toISOString(),
+                endDate: end.toISOString(),
+                maxParticipants: 100,
+                currentParticipants: 0,
+                participants: [],
+                organizer: { id: userId, name: "You" },
+                tags: ["dev", "nearby"],
+                rewards: { coins: 100, experience: 50 },
+                visibility: "public",
+                huntDetails: {
+                  difficulty: "Easy",
+                  terrain: "Urban",
+                  range: 1,
+                },
+                createdAt: now.toISOString(),
+                updatedAt: now.toISOString(),
+              };
+
+              const eventId = await FirebaseService.createEvent(eventData);
+
+              // Auto-join creator
+              await FirebaseService.joinEvent(userId, eventId);
+
+              // Load event and set as selected so coins render under gating
+              const createdEvent = await FirebaseService.getEventById(eventId);
+              if (createdEvent) {
+                setSelectedEvent(createdEvent as any);
+              }
+
+              // Helper to offset lat/lon by meters east/north
+              const offsetGpsByMeters = (
+                lat: number,
+                lon: number,
+                east: number,
+                north: number
+              ) => {
+                const latRad = (lat * Math.PI) / 180;
+                const dLat = north / 111320; // meters per degree latitude
+                const dLon = east / (111320 * Math.cos(latRad));
+                return { latitude: lat + dLat, longitude: lon + dLon };
+              };
+
+              // Create one coin at exact location and four ~1m away in cardinal directions
+              const here = {
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+              };
+              let lastCoinId: string | null = null;
+              lastCoinId = await FirebaseService.createEventCoin({
+                eventId,
+                createdBy: userId,
+                latitude: here.latitude,
+                longitude: here.longitude,
+                value: 10,
+              });
+
+              // Create four coins ~1m away in cardinal directions
+              const offsets = [
+                { east: 1.0, north: 0.0 }, // East ~1m
+                { east: 0.0, north: 1.0 }, // North ~1m
+                { east: -1.0, north: 0.0 }, // West ~1m
+                { east: 0.0, north: -1.0 }, // South ~1m
+              ];
+              for (const o of offsets) {
+                const { latitude: coinLat, longitude: coinLon } =
+                  offsetGpsByMeters(
+                    userLocation.latitude,
+                    userLocation.longitude,
+                    o.east,
+                    o.north
+                  );
+                lastCoinId = await FirebaseService.createEventCoin({
+                  eventId,
+                  createdBy: userId,
+                  latitude: coinLat,
+                  longitude: coinLon,
+                  value: 10,
+                });
+              }
+
+              // Refresh local UI
+              const coins = await FirebaseService.getCoinsForEvent(eventId);
+              setEventCoins(coins);
+              setSelectedMarker(lastCoinId || null);
+              setRingCenter({
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+              });
+              setRingSource("custom");
+
+              Alert.alert(
+                "Event created",
+                "Ongoing event created at your GPS with nearby coins."
+              );
+            } catch (e) {
+              console.warn("Failed to create event + coin", e);
+              Alert.alert("Create failed", "Could not create event and coin.");
+            } finally {
+              setCreatingEvent(false);
+            }
+          }}
+        >
+          <Text style={styles.floatingButtonText}>
+            {creatingEvent ? "Creating…" : "Create Ongoing Event Here"}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Create Coin Here (only if active event and participant) */}
+      {isParticipant && selectedEvent?.status === "active" && (
+        <TouchableOpacity
+          style={[
+            styles.floatingButton,
+            styles.createCoinButton,
+            creating && styles.createCoinButtonDisabled,
+          ]}
+          disabled={creating}
+          onPress={async () => {
+            try {
+              if (!userLocation) {
+                Alert.alert(
+                  "GPS not ready",
+                  "We couldn't get your current position yet."
+                );
+                return;
+              }
+              const user = FirebaseService.getCurrentUser?.();
+              const userId = user?.uid;
+              if (!userId) {
+                Alert.alert("Not signed in", "Please sign in to create coins.");
+                return;
+              }
+              setCreating(true);
+              const id = await FirebaseService.createEventCoin({
+                eventId: selectedEvent.id!,
+                createdBy: userId,
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+                value: 10,
+              });
+              // Refresh coins after creation
+              const coins = await FirebaseService.getCoinsForEvent(
+                selectedEvent.id!
+              );
+              setEventCoins(coins);
+              setSelectedMarker(id);
+              setRingCenter({
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+              });
+              setRingSource("custom");
+            } catch (e) {
+              console.warn("Failed to create event coin", e);
+              Alert.alert("Create failed", "Could not create coin here.");
+            } finally {
+              setCreating(false);
+            }
+          }}
+        >
+          <Text style={styles.floatingButtonText}>
+            {creating ? "Creating…" : "Create Coin Here"}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -1077,6 +1341,20 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  createCoinButton: {
+    bottom: 90,
+    backgroundColor: "rgba(123, 63, 228, 0.9)",
+  },
+  createCoinButtonDisabled: {
+    backgroundColor: "rgba(123, 63, 228, 0.4)",
+  },
+  devCreateEventButton: {
+    bottom: 150,
+    backgroundColor: "rgba(255, 99, 71, 0.9)",
+  },
+  devCreateEventButtonDisabled: {
+    backgroundColor: "rgba(255, 99, 71, 0.4)",
   },
 });
 

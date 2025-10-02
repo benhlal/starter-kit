@@ -193,6 +193,8 @@ export interface Coin {
   value: number;
   type: CoinType;
   rarity: CoinRarity;
+  eventId?: string; // Event this coin belongs to
+  createdBy?: string; // User ID who placed/created the coin
   location: {
     latitude: number;
     longitude: number;
@@ -444,3 +446,28 @@ export type RootStackParamList = {
 // Utility types
 export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
+// AR Object types (persisted AR placements)
+export interface ARObject {
+  id: string;
+  userId: string;
+  type: "spawn" | "coin" | "custom";
+  model?: string; // e.g., "coin"
+  coinId?: string;
+  eventId?: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    altitude?: number;
+  };
+  rotation?: {
+    yaw?: number; // degrees
+    pitch?: number; // degrees
+    roll?: number; // degrees
+  };
+  scale?: number; // uniform scale
+  active: boolean;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}

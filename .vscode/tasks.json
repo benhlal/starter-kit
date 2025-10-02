@@ -70,6 +70,41 @@
 			"label": "android:assembleDebug-retry",
 			"type": "shell",
 			"command": "./android/gradlew.bat -p android :app:assembleDebug --no-daemon"
+		},
+		{
+			"label": "android:assembleDebug",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android :app:assembleDebug",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "android:assembleDebug",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android :app:assembleDebug",
+			"group": "build"
+		},
+		{
+			"label": "android:assembleDebug",
+			"type": "shell",
+			"command": "./android/gradlew.bat -p android :app:assembleDebug",
+			"group": "build"
+		},
+		{
+			"label": "tsc-check",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"-s",
+				"tsc",
+				"--noEmit"
+			],
+			"group": "build"
 		}
 	]
 }

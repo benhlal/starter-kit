@@ -6,12 +6,18 @@ interface Props {
   active?: "Home" | "Account";
   setActiveTab: (tab: "Home" | "Account") => void;
   onCreateEvent?: () => void;
+  // When true, show the center "+" create button (admins only)
+  canCreateEvents?: boolean;
+  // Open AR collect flow
+  onCollect?: () => void;
 }
 
 const BottomNav: React.FC<Props> = ({
   active,
   setActiveTab,
   onCreateEvent,
+  canCreateEvents = false,
+  onCollect,
 }) => (
   <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
     <View style={styles.bottomNav}>
@@ -28,13 +34,17 @@ const BottomNav: React.FC<Props> = ({
         </Text>
       </TouchableOpacity>
 
-      {/* Create Event (center) */}
+      {/* Center: Collect AR coins (tap). If admin, long-press opens Create Event. */}
       <TouchableOpacity
-        style={styles.createButton}
-        onPress={onCreateEvent}
-        accessibilityLabel="Create event"
+        style={styles.navButton}
+        onPress={onCollect}
+        onLongPress={canCreateEvents ? onCreateEvent : undefined}
+        accessibilityLabel={
+          canCreateEvents ? "Collect (long-press to create)" : "Collect"
+        }
       >
-        <Text style={styles.createPlus}>＋</Text>
+        <Text style={styles.icon}>📷</Text>
+        <Text style={styles.navText}>Collect</Text>
       </TouchableOpacity>
 
       {/* Account tab */}
@@ -81,27 +91,6 @@ const styles = StyleSheet.create({
   activeText: {
     color: "#7B3FE4",
     fontWeight: "bold",
-  },
-  createButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#7B3FE4",
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 8,
-    marginTop: -6,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
-  },
-  createPlus: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "800",
-    lineHeight: 26,
   },
 });
 

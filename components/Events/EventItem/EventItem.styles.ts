@@ -11,6 +11,10 @@ export const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cardPressed: {
+    transform: [{ scale: 0.99 }],
+    opacity: 0.95,
+  },
   cardExpired: {
     backgroundColor: "#1a1a1a",
     opacity: 0.6,
@@ -155,6 +159,10 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
+  },
+  detailsButton: {
+    backgroundColor: "#2563EB",
+    marginLeft: 8,
   },
   mapButtonText: {
     color: "#fff",

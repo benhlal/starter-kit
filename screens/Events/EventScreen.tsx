@@ -54,9 +54,16 @@ import { participationService } from "../../services/ParticipationService";
 interface EventScreenProps {
   setActiveTab?: (location?: FocusLocation) => void;
   onBack?: () => void;
+  onOpenDetails?: (eventId: string) => void;
+  onOpenMockAR?: (eventId: string) => void;
 }
 
-const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
+const EventScreen: React.FC<EventScreenProps> = ({
+  setActiveTab,
+  onBack,
+  onOpenDetails,
+  onOpenMockAR,
+}) => {
   const [filtersVisible, setFiltersVisible] = useState(true);
   const filtersOpacity = useRef(new Animated.Value(1)).current;
   const [filters, setFilters] = useRecoilState(uiFiltersState);
@@ -692,6 +699,8 @@ const EventScreen: React.FC<EventScreenProps> = ({ setActiveTab, onBack }) => {
         onRefresh={handleRefresh}
         refreshing={isRefreshing}
         userParticipations={userParticipations}
+        onDetails={(id) => onOpenDetails?.(id)}
+        onMockAR={(id) => onOpenMockAR?.(id)}
       />
 
       {/* Fancy BottomSheet confirm dialog */}

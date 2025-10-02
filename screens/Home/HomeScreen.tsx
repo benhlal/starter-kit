@@ -3,16 +3,27 @@ import { View } from "react-native";
 import ProfileScreen from "../Profile/ProfileScreen";
 import EventScreen from "../Events/EventScreen";
 import MapScreen from "../Map/MapScreen";
+import ARScreen from "../AR/ARScreen";
+import ARHuntScreen from "../AR/ARHuntScreen";
+import MockedARScreen from "../AR/MockedARScreen";
+import EventDetailsScreen from "../Events/EventDetailsScreen";
 import BottomNav from "../../components/Home/BottomNav/BottomNav";
 import { styles } from "./HomeScreen.styles";
 import LoginScreen from "../Auth/LoginScreen";
 import { useAuthUser } from "../../state/recoil/hooks";
 import { CreateEventModal } from "../../components/Events/CreateEventModal";
+import { getUserPermissions } from "../../utils/userRoles";
 
 const HomeScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"Home" | "Account">("Home");
   const [showMap, setShowMap] = useState(false);
   const [shouldRenderMap, setShouldRenderMap] = useState(false);
+  const [showAR, setShowAR] = useState(false);
+  const [shouldRenderAR, setShouldRenderAR] = useState(false);
+  const [showEventDetails, setShowEventDetails] = useState(false);
+  const [detailsEventId, setDetailsEventId] = useState<string | null>(null);
+  const [showARHunt, setShowARHunt] = useState(false);
+  const [showMockAR, setShowMockAR] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [focusLocation, setFocusLocation] = useState<
     { latitude: number; longitude: number; title: string } | undefined
@@ -25,6 +36,11 @@ const HomeScreen: React.FC = () => {
     if (showMap) {
       setShowMap(false);
       setShouldRenderMap(false);
+    }
+    // Hide AR when switching tabs
+    if (shouldRenderAR || showAR) {
+      setShowAR(false);
+      setShouldRenderAR(false);
     }
   };
 
@@ -63,6 +79,28 @@ const HomeScreen: React.FC = () => {
     }
   };
 
+  const closeEventDetails = () => {
+    setShowEventDetails(false);
+    setDetailsEventId(null);
+  };
+
+  const startHuntForEvent = (_eventId: string) => {
+    setShowEventDetails(false);
+    setTimeout(() => {
+      setShowARHunt(true);
+    }, 50);
+  };
+
+  const handleARToggle = () => {
+    if (!showAR) {
+      setShouldRenderAR(true);
+      setTimeout(() => setShowAR(true), 100);
+    } else {
+      setShowAR(false);
+      setTimeout(() => setShouldRenderAR(false), 50);
+    }
+  };
+
   const renderCurrentScreen = () => {
     if (!currentUser) {
       return <LoginScreen />;
@@ -77,7 +115,23 @@ const HomeScreen: React.FC = () => {
             <EventScreen
               setActiveTab={handleMapToggle}
               onBack={showMap ? handleBack : undefined}
+              onOpenDetails={(id) => {
+                setDetailsEventId(id);
+                setShowEventDetails(true);
+              }}
+              onOpenMockAR={(_id) => {
+                setShowMockAR(true);
+              }}
             />
+            {showEventDetails && detailsEventId && (
+              <View style={[styles.mapOverlay, styles.mapOverlayVisible]}>
+                <EventDetailsScreen
+                  eventId={detailsEventId}
+                  onClose={closeEventDetails}
+                  onStartHunt={startHuntForEvent}
+                />
+              </View>
+            )}
             {/* Pre-render off-screen, then show instantly without animation */}
             {shouldRenderMap && (
               <View
@@ -92,6 +146,31 @@ const HomeScreen: React.FC = () => {
                 />
               </View>
             )}
+            {/* AR overlay */}
+            {shouldRenderAR && (
+              <View
+                style={[
+                  styles.mapOverlay,
+                  showAR ? styles.mapOverlayVisible : styles.mapOverlayHidden,
+                ]}
+              >
+                {/* Placeholder AR screen. Implement AR logic inside this component later. */}
+                <ARScreen onClose={handleARToggle} />
+              </View>
+            )}
+            {showARHunt && detailsEventId && (
+              <View style={[styles.mapOverlay, styles.mapOverlayVisible]}>
+                <ARHuntScreen
+                  eventId={detailsEventId}
+                  onClose={() => setShowARHunt(false)}
+                />
+              </View>
+            )}
+            {showMockAR && (
+              <View style={[styles.mapOverlay, styles.mapOverlayVisible]}>
+                <MockedARScreen onClose={() => setShowMockAR(false)} />
+              </View>
+            )}
           </View>
         );
     }
@@ -102,10 +181,15 @@ const HomeScreen: React.FC = () => {
       <View style={styles.content}>{renderCurrentScreen()}</View>
       {currentUser && (
         <>
+          {/** Only admins see the center create button */}
           <BottomNav
             active={activeTab}
             setActiveTab={handleTabChange}
             onCreateEvent={() => setCreateOpen(true)}
+            canCreateEvents={
+              getUserPermissions(currentUser.email || null).canCreateEvents
+            }
+            onCollect={handleARToggle}
           />
           <CreateEventModal
             isVisible={createOpen}

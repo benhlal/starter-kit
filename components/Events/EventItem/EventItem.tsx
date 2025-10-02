@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, Image, TouchableOpacity } from "react-native";
+import { View, Text, Image, TouchableOpacity, Pressable } from "react-native";
 import { Event, FocusLocation } from "../../../types";
 import { useMapState } from "../../../state/recoil/hooks";
 import { styles } from "./EventItem.styles";
@@ -9,6 +9,8 @@ interface EventItemProps {
   onMapPress?: (location: FocusLocation) => void;
   onParticipate?: (event: Event) => void;
   isParticipating?: boolean;
+  onDetails?: () => void;
+  onMockAR?: () => void;
 }
 
 export const EventItem: React.FC<EventItemProps> = ({
@@ -16,6 +18,8 @@ export const EventItem: React.FC<EventItemProps> = ({
   onMapPress,
   onParticipate,
   isParticipating = false,
+  onDetails,
+  onMockAR,
 }) => {
   const { setSelectedEvent } = useMapState();
   const isParticipant = isParticipating;
@@ -182,7 +186,15 @@ export const EventItem: React.FC<EventItemProps> = ({
       : undefined;
 
   return (
-    <View style={[styles.card, isExpired && styles.cardExpired]}>
+    <Pressable
+      onPress={() => onDetails?.()}
+      android_ripple={{ color: "rgba(255,255,255,0.06)" }}
+      style={({ pressed }) => [
+        styles.card,
+        isExpired && styles.cardExpired,
+        pressed ? styles.cardPressed : null,
+      ]}
+    >
       <Image
         source={{
           uri:
@@ -334,7 +346,19 @@ export const EventItem: React.FC<EventItemProps> = ({
         <TouchableOpacity style={styles.mapButton} onPress={handleMapPress}>
           <Text style={styles.mapButtonText}>View on Map</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.mapButton, styles.detailsButton]}
+          onPress={() => onDetails?.()}
+        >
+          <Text style={styles.mapButtonText}>Details</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.mapButton, styles.detailsButton]}
+          onPress={() => onMockAR?.()}
+        >
+          <Text style={styles.mapButtonText}>Mock AR</Text>
+        </TouchableOpacity>
       </View>
-    </View>
+    </Pressable>
   );
 };
