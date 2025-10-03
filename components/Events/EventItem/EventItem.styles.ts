@@ -137,49 +137,66 @@ export const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start",
+    justifyContent: "space-between", // Evenly distribute buttons
     marginTop: 12,
+    gap: 8, // Consistent spacing between all buttons
   },
   participateButton: {
     backgroundColor: "#2E7D32",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 8, // Reduced padding for more compact buttons
     borderRadius: 20,
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
-    marginRight: 12,
+    flex: 1, // Equal width distribution
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 2, // Small margin for visual separation
   },
   participateButtonText: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: 13, // Slightly smaller to fit better
     fontWeight: "600",
+    textAlign: "center",
   },
   participateButtonSubscribed: {
     backgroundColor: "#E53935",
   },
   mapButton: {
     backgroundColor: "#FF9500",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 8, // Reduced padding to match participate button
     borderRadius: 20,
-    // In actions row, so no alignSelf; margin handled by container
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
+    flex: 1, // Equal width distribution
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 2, // Small margin for visual separation
   },
   detailsButton: {
     backgroundColor: "#2563EB",
-    marginLeft: 8,
+    paddingVertical: 8, // Reduced padding to match other buttons
+    borderRadius: 20,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    flex: 1, // Equal width distribution
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 2, // Small margin for visual separation
   },
   mapButtonText: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: 13, // Consistent font size with participate button
     fontWeight: "600",
+    textAlign: "center",
   },
   placeholderImage: {
     backgroundColor: "#333",

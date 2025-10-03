@@ -18,12 +18,14 @@ interface EventDetailsScreenProps {
   eventId: string;
   onClose?: () => void;
   onStartHunt?: (eventId: string) => void;
+  onParticipationChange?: (eventId: string, isJoined: boolean) => void;
 }
 
 const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
   eventId,
   onClose,
   onStartHunt,
+  onParticipationChange,
 }) => {
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
@@ -86,11 +88,30 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
     };
   }, [coins, event]);
 
-  // Check if user has joined this event
-  const isUserJoined = useMemo(() => {
-    const userJoinedEvents: string[] = userProfile?.joinedEvents || [];
-    return userJoinedEvents.includes(eventId);
-  }, [userProfile?.joinedEvents, eventId]);
+  // Check if user has joined this event - use fresh data
+  const [isUserJoined, setIsUserJoined] = useState(false);
+
+  // Load participation status when component mounts or event changes
+  useEffect(() => {
+    const checkParticipationStatus = async () => {
+      try {
+        const isParticipating = await participationService.isUserParticipating(
+          eventId
+        );
+        setIsUserJoined(isParticipating);
+      } catch (participationError) {
+        console.error(
+          "Error checking participation status:",
+          participationError
+        );
+        // Fallback to userProfile data
+        const userJoinedEvents: string[] = userProfile?.joinedEvents || [];
+        setIsUserJoined(userJoinedEvents.includes(eventId));
+      }
+    };
+
+    checkParticipationStatus();
+  }, [eventId, userProfile?.joinedEvents]);
 
   // Check if event is currently ongoing
   const isEventOngoing = useMemo(() => {
@@ -127,8 +148,12 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
 
       if (result.success) {
         Alert.alert("Success", result.message);
+        // Update local state immediately for instant UI feedback
+        setIsUserJoined(true);
         // Refresh user profile to update joined events
         await fetchUserProfile(user.uid);
+        // Notify parent about participation change for real-time sync
+        onParticipationChange?.(eventId, true);
       } else {
         Alert.alert("Error", result.message);
       }
@@ -167,7 +192,7 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
                 eventId,
                 event
               );
-              
+
               if (result.success) {
                 Alert.alert("Success", `Left event! ${result.message}`, [
                   {
@@ -178,8 +203,12 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
                     },
                   },
                 ]);
+                // Update local state immediately for instant UI feedback
+                setIsUserJoined(false);
                 // Refresh user profile to update joined events
                 await fetchUserProfile(user.uid);
+                // Notify parent about participation change for real-time sync
+                onParticipationChange?.(eventId, false);
               } else {
                 Alert.alert("Error", result.message);
               }
@@ -320,7 +349,7 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
                   <Text style={styles.ctaText}>⏳ Event Not Started</Text>
                 </View>
               )}
-              
+
               {/* Leave Hunt Button for joined users */}
               <TouchableOpacity
                 style={[styles.cta, styles.leaveButton]}
