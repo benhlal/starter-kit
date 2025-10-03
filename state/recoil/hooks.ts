@@ -226,6 +226,10 @@ export const useCoins = () => {
     [appConfig.useMockData]
   );
 
+  const clearCoins = useCallback(() => {
+    setCoins([]);
+  }, [setCoins]);
+
   return {
     coins,
     collectedCoinsCount,
@@ -234,6 +238,7 @@ export const useCoins = () => {
     fetchCoins,
     collectCoin,
     getCoinsByRegion,
+    clearCoins,
   };
 };
 
