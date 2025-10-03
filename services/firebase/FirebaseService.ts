@@ -314,6 +314,50 @@ export class FirebaseService {
     }
   }
 
+  static async deleteEvent(eventId: string): Promise<void> {
+    try {
+      console.log(
+        `[Firebase] Deleting event ${eventId} and all associated data`
+      );
+
+      // Delete all coins for this event first
+      const deletedCoins = await this.deleteCoinsForEvent(eventId);
+      console.log(
+        `[Firebase] Deleted ${deletedCoins} coins for event ${eventId}`
+      );
+
+      // Remove event from all users' joinedEvents arrays
+      const usersSnapshot = await firestore()
+        .collection(this.USERS_COLLECTION)
+        .where("joinedEvents", "array-contains", eventId)
+        .get();
+
+      if (!usersSnapshot.empty) {
+        const batch = firestore().batch();
+        usersSnapshot.docs.forEach((userDoc) => {
+          batch.update(userDoc.ref, {
+            joinedEvents: firestore.FieldValue.arrayRemove(eventId),
+            updatedAt: firestore.FieldValue.serverTimestamp(),
+          });
+        });
+        await batch.commit();
+        console.log(
+          `[Firebase] Removed event ${eventId} from ${usersSnapshot.docs.length} users`
+        );
+      }
+
+      // Finally delete the event document
+      await firestore()
+        .collection(this.EVENTS_COLLECTION)
+        .doc(eventId)
+        .delete();
+      console.log(`[Firebase] Event ${eventId} deleted successfully`);
+    } catch (error) {
+      console.error(`Error deleting event ${eventId}:`, error);
+      throw error;
+    }
+  }
+
   static async joinEvent(userId: string, eventId: string): Promise<void> {
     try {
       const batch = firestore().batch();

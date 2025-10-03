@@ -194,6 +194,10 @@ export const styles = StyleSheet.create({
     fontSize: 18,
     color: "#B0B0B0",
   },
+  sectionDivider: {
+    marginTop: 20,
+    marginBottom: 10,
+  },
   logoutButton: {
     backgroundColor: "#FF4444",
     borderRadius: 12,

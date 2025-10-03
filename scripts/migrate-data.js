@@ -159,13 +159,13 @@ const sampleCoins = [
 ];
 
 async function migrateDataToFirebase(options = {}) {
-  const { dryRun = false, clearExisting = false, batchSize = 10 } = options;
+  const { dryRun = false } = options;
 
   console.log("🚀 Starting Firebase data migration...");
 
   if (dryRun) {
     console.log("🔍 DRY RUN MODE - No actual data will be written");
-    console.log(`📊 Would migrate:`);
+    console.log("📊 Would migrate:");
     console.log(`  - ${sampleEvents.length} events`);
     console.log(`  - ${sampleUsers.length} users`);
     console.log(`  - ${sampleCoins.length} coins`);

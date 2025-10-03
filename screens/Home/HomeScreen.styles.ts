@@ -24,4 +24,19 @@ export const styles = StyleSheet.create({
     opacity: 0,
     pointerEvents: "none",
   },
+  closeButtonContainer: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+  },
+  closeButton: {
+    backgroundColor: "rgba(0,0,0,0.7)",
+    padding: 10,
+    borderRadius: 20,
+  },
+  closeButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
 });

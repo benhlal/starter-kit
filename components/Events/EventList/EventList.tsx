@@ -11,17 +11,20 @@ import { Event, FocusLocation } from "../../../types";
 import { EventItem } from "../EventItem/EventItem";
 import { styles } from "./EventList.styles";
 
-export interface EventListProps {
+interface EventListProps {
   events: Event[];
   onEventPress?: (event: Event) => void;
-  onScrollDirectionChange?: (dir: "up" | "down") => void;
-  topInset?: number; // padding to avoid overlay collisions (e.g., floating filters)
+  onEventDetails?: (eventId: string) => void;
+  onMapPress?: (location: FocusLocation) => void;
   onParticipate?: (event: Event) => void;
+  loading?: boolean;
+  selectedEventId?: string;
+  onScrollDirectionChange?: (direction: "up" | "down") => void;
+  topInset?: number;
   onRefresh?: () => void;
   refreshing?: boolean;
-  userParticipations?: string[]; // Array of event IDs the user is participating in
+  userParticipations?: string[];
   onDetails?: (eventId: string) => void;
-  onMockAR?: (eventId: string) => void;
 }
 
 export const EventList: React.FC<EventListProps> = ({
@@ -34,7 +37,6 @@ export const EventList: React.FC<EventListProps> = ({
   refreshing = false,
   userParticipations = [],
   onDetails,
-  onMockAR,
 }) => {
   const handleMapPress = (location: FocusLocation) => {
     if (onEventPress) {
@@ -73,7 +75,6 @@ export const EventList: React.FC<EventListProps> = ({
       onParticipate={onParticipate}
       isParticipating={userParticipations.includes(item.id)}
       onDetails={() => onDetails?.(item.id)}
-      onMockAR={() => onMockAR?.(item.id)}
     />
   );
 

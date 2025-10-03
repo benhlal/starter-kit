@@ -122,4 +122,16 @@ export const createEventModalStyles = StyleSheet.create({
     color: "#333333",
     fontSize: 16,
   },
+  mapButton: {
+    backgroundColor: "#f0f0f0",
+    borderColor: "#007AFF",
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mapButtonText: {
+    color: "#007AFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
 });

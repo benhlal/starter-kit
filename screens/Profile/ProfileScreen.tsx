@@ -10,6 +10,9 @@ import {
   Alert,
   Modal,
 } from "react-native";
+import ARGPSDemo from "../../components/ARGPSDemo";
+import { CreateEventModal } from "../../components/Events/CreateEventModal";
+import { getUserPermissions } from "../../utils/userRoles";
 import {
   useUserProfile,
   useCoins,
@@ -35,8 +38,14 @@ const ProfileScreen: React.FC = () => {
   const { userProfile, userLevel, fetchUserProfile } = useUserProfile();
   const { collectedCoinsCount } = useCoins();
   const { appConfig, toggleMockMode } = useAppState();
+  const currentUser = auth().currentUser;
+  const isAdmin = getUserPermissions(
+    currentUser?.email || null
+  ).canCreateEvents;
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [showARGPS, setShowARGPS] = useState(false);
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
 
   useEffect(() => {
     // Fetch user profile when component mounts
@@ -108,6 +117,63 @@ const ProfileScreen: React.FC = () => {
         break;
       case "migration":
         setShowMigrationModal(true);
+        break;
+      case "testARGPS":
+        setShowARGPS(true);
+        break;
+      case "createEvent":
+        setShowCreateEventModal(true);
+        break;
+      case "clearEvents":
+        Alert.alert(
+          "Clear Events",
+          "This feature will clear all events (Admin only)",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Clear",
+              style: "destructive",
+              onPress: () => {
+                Alert.alert("Events Cleared", "All events have been cleared.");
+              },
+            },
+          ]
+        );
+        break;
+      case "manageUsers":
+        Alert.alert(
+          "Manage Users",
+          "User management features:\n• View all users\n• Edit permissions\n• Ban/unban users\n\nComing soon!"
+        );
+        break;
+      case "eventAnalytics":
+        Alert.alert(
+          "Event Analytics",
+          "Analytics features:\n• Event participation stats\n• Coin collection metrics\n• User engagement data\n\nComing soon!"
+        );
+        break;
+      case "populateEvents":
+        Alert.alert(
+          "Populate Events",
+          "This will add 25 new AR coin hunt events to the database.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Add Events",
+              onPress: async () => {
+                try {
+                  const {
+                    populateMoreEvents,
+                  } = require("../../utils/populateEvents");
+                  await populateMoreEvents();
+                  Alert.alert("Success", "25 new AR coin hunt events added!");
+                } catch (error) {
+                  Alert.alert("Error", "Failed to populate events");
+                }
+              },
+            },
+          ]
+        );
         break;
       default:
         break;
@@ -223,6 +289,113 @@ const ProfileScreen: React.FC = () => {
     </View>
   );
 
+  const renderDeveloper = () => (
+    <View style={styles.settingsContainer}>
+      <Text style={styles.sectionTitle}>🚀 Developer & Testing</Text>
+
+      <TouchableOpacity
+        style={styles.settingItem}
+        onPress={() => handleSettingPress("testARGPS")}
+      >
+        <View style={styles.settingLeft}>
+          <View style={styles.settingIcon}>
+            <Text style={styles.settingIconText}>🎯</Text>
+          </View>
+          <Text style={styles.settingText}>Test AR GPS</Text>
+        </View>
+        <Text style={styles.settingArrow}>›</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.settingItem}
+        onPress={() => handleSettingPress("mockMode")}
+      >
+        <View style={styles.settingLeft}>
+          <View style={styles.settingIcon}>
+            <Text style={styles.settingIconText}>🔄</Text>
+          </View>
+          <Text style={styles.settingText}>
+            Mock Mode {appConfig.useMockData ? "(On)" : "(Off)"}
+          </Text>
+        </View>
+        <Text style={styles.settingArrow}>›</Text>
+      </TouchableOpacity>
+
+      {isAdmin && (
+        <>
+          <View style={styles.sectionDivider}>
+            <Text style={styles.sectionTitle}>⚙️ Admin Operations</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => handleSettingPress("createEvent")}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>➕</Text>
+              </View>
+              <Text style={styles.settingText}>Create Event</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => handleSettingPress("clearEvents")}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>🗑️</Text>
+              </View>
+              <Text style={styles.settingText}>Clear All Events</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => handleSettingPress("manageUsers")}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>👥</Text>
+              </View>
+              <Text style={styles.settingText}>Manage Users</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => handleSettingPress("eventAnalytics")}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>📊</Text>
+              </View>
+              <Text style={styles.settingText}>Event Analytics</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => handleSettingPress("populateEvents")}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>🔧</Text>
+              </View>
+              <Text style={styles.settingText}>Populate Events</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+
   const renderSettings = () => (
     <View style={styles.settingsContainer}>
       <Text style={styles.sectionTitle}>Settings</Text>
@@ -249,21 +422,6 @@ const ProfileScreen: React.FC = () => {
             <Text style={styles.settingIconText}>🔒</Text>
           </View>
           <Text style={styles.settingText}>Privacy & Security</Text>
-        </View>
-        <Text style={styles.settingArrow}>›</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.settingItem}
-        onPress={() => handleSettingPress("mockMode")}
-      >
-        <View style={styles.settingLeft}>
-          <View style={styles.settingIcon}>
-            <Text style={styles.settingIconText}>🔄</Text>
-          </View>
-          <Text style={styles.settingText}>
-            Mock Mode {appConfig.useMockData ? "(On)" : "(Off)"}
-          </Text>
         </View>
         <Text style={styles.settingArrow}>›</Text>
       </TouchableOpacity>
@@ -319,6 +477,7 @@ const ProfileScreen: React.FC = () => {
         {renderProfileHeader()}
         {renderStats()}
         {renderAchievements()}
+        {renderDeveloper()}
         {renderSettings()}
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -361,6 +520,55 @@ const ProfileScreen: React.FC = () => {
           <MigrationScreen />
         </View>
       </Modal>
+
+      {/* AR GPS Demo Modal */}
+      <Modal
+        visible={showARGPS}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowARGPS(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: 20,
+              paddingTop: 60,
+              borderBottomWidth: 1,
+              borderBottomColor: "#ddd",
+              backgroundColor: "white",
+            }}
+          >
+            <Text style={{ fontSize: 20, fontWeight: "600" }}>
+              🎯 AR GPS Testing
+            </Text>
+            <TouchableOpacity
+              style={{
+                padding: 8,
+                borderRadius: 20,
+                backgroundColor: "#f0f0f0",
+              }}
+              onPress={() => setShowARGPS(false)}
+            >
+              <Text style={{ fontSize: 16 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <ARGPSDemo />
+        </View>
+      </Modal>
+
+      {/* Create Event Modal */}
+      <CreateEventModal
+        isVisible={showCreateEventModal}
+        onClose={() => setShowCreateEventModal(false)}
+        onEventCreated={(eventId) => {
+          console.log("Event created with ID:", eventId);
+          setShowCreateEventModal(false);
+          Alert.alert("Success", "Event created successfully!");
+        }}
+      />
     </View>
   );
 };

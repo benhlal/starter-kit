@@ -16,9 +16,9 @@ import {
   Alert,
   Linking,
 } from "react-native";
-import firestore from "@react-native-firebase/firestore";
+
 import { EventList } from "../../components/Events/EventList";
-import { FocusLocation } from "../../types";
+
 import { uiFiltersState, eventsState } from "../../state/recoil/atoms";
 import {
   useLocationFilter,
@@ -46,23 +46,24 @@ import {
   mapCenterOnUserState,
   mapSelectLocationModeState,
 } from "../../state/recoil/atoms";
-import { populateMoreEvents } from "../../utils/populateEvents";
-import { isAdmin } from "../../utils/userRoles";
+
 import { participationService } from "../../services/ParticipationService";
 // import { styles } from "./EventScreen.styles"; // TODO: Use when implementing styled components
 
 interface EventScreenProps {
-  setActiveTab?: (location?: FocusLocation) => void;
+  setActiveTab?: (location?: {
+    latitude: number;
+    longitude: number;
+    title: string;
+  }) => void;
   onBack?: () => void;
   onOpenDetails?: (eventId: string) => void;
-  onOpenMockAR?: (eventId: string) => void;
 }
 
 const EventScreen: React.FC<EventScreenProps> = ({
   setActiveTab,
   onBack,
   onOpenDetails,
-  onOpenMockAR,
 }) => {
   const [filtersVisible, setFiltersVisible] = useState(true);
   const filtersOpacity = useRef(new Animated.Value(1)).current;
@@ -565,74 +566,7 @@ const EventScreen: React.FC<EventScreenProps> = ({
         </TouchableOpacity>
       )}
 
-      {/* Admin Only: Populate Events Button */}
-      {isAdmin(currentUser?.email || null) && (
-        <View style={screenStyles.adminButtonsContainer}>
-          <TouchableOpacity
-            style={screenStyles.populateButton}
-            onPress={async () => {
-              try {
-                await populateMoreEvents();
-                Alert.alert("Success", "25 new AR coin hunt events added!");
-                fetchEvents(); // Refresh the events list
-              } catch (error) {
-                Alert.alert("Error", "Failed to populate events");
-              }
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={screenStyles.populateButtonText}>
-              🔧 Admin: Add Events
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={screenStyles.clearButton}
-            onPress={() => {
-              Alert.alert(
-                "Clear All Events",
-                "Are you sure you want to delete ALL events? This action cannot be undone.",
-                [
-                  {
-                    text: "Cancel",
-                    style: "cancel",
-                  },
-                  {
-                    text: "Clear All",
-                    style: "destructive",
-                    onPress: async () => {
-                      try {
-                        const eventsSnapshot = await firestore()
-                          .collection("events")
-                          .get();
-                        const batch = firestore().batch();
-
-                        eventsSnapshot.docs.forEach((doc) => {
-                          batch.delete(doc.ref);
-                        });
-
-                        await batch.commit();
-                        Alert.alert(
-                          "Success",
-                          `Deleted ${eventsSnapshot.docs.length} events`
-                        );
-                        fetchEvents(); // Refresh the events list
-                      } catch (error) {
-                        Alert.alert("Error", "Failed to clear events");
-                      }
-                    },
-                  },
-                ]
-              );
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={screenStyles.clearButtonText}>
-              🗑️ Admin: Clear Events
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* Admin buttons moved to Profile → Admin Operations section */}
 
       {/* Top search pills overlay */}
       <TopSearch
@@ -700,7 +634,6 @@ const EventScreen: React.FC<EventScreenProps> = ({
         refreshing={isRefreshing}
         userParticipations={userParticipations}
         onDetails={(id) => onOpenDetails?.(id)}
-        onMockAR={(id) => onOpenMockAR?.(id)}
       />
 
       {/* Fancy BottomSheet confirm dialog */}

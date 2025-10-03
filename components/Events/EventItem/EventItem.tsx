@@ -1,16 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Image, TouchableOpacity, Pressable } from "react-native";
-import { Event, FocusLocation } from "../../../types";
+import { Event } from "../../../types";
 import { useMapState } from "../../../state/recoil/hooks";
 import { styles } from "./EventItem.styles";
 
 interface EventItemProps {
   event: Event;
-  onMapPress?: (location: FocusLocation) => void;
+  onPress?: () => void;
+  onDetails?: () => void;
+  onMapPress?: (location: {
+    latitude: number;
+    longitude: number;
+    title: string;
+  }) => void;
   onParticipate?: (event: Event) => void;
   isParticipating?: boolean;
-  onDetails?: () => void;
-  onMockAR?: () => void;
 }
 
 export const EventItem: React.FC<EventItemProps> = ({
@@ -19,10 +23,10 @@ export const EventItem: React.FC<EventItemProps> = ({
   onParticipate,
   isParticipating = false,
   onDetails,
-  onMockAR,
 }) => {
   const { setSelectedEvent } = useMapState();
   const isParticipant = isParticipating;
+  const [showDetails, setShowDetails] = useState(false);
   // Time status computation
   const now = Date.now();
   const startMs = useMemo(() => {
@@ -187,7 +191,7 @@ export const EventItem: React.FC<EventItemProps> = ({
 
   return (
     <Pressable
-      onPress={() => onDetails?.()}
+      onPress={() => setShowDetails(!showDetails)}
       android_ripple={{ color: "rgba(255,255,255,0.06)" }}
       style={({ pressed }) => [
         styles.card,
@@ -208,7 +212,9 @@ export const EventItem: React.FC<EventItemProps> = ({
           console.log("Failed to load image:", event.img || event.image)
         }
       />
-      <Text style={styles.title}>{event.name}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{event.name}</Text>
+      </View>
       {statusLabel ? (
         <View style={styles.statusRow}>
           <Text
@@ -225,109 +231,73 @@ export const EventItem: React.FC<EventItemProps> = ({
           </Text>
         </View>
       ) : null}
-      {/* Primary details */}
+      {/* Essential info only */}
       {event.balance ? (
         <Text style={styles.detail}>{event.balance}</Text>
-      ) : null}
-      {/* Total Prize Pool - FIRST and COLORED */}
-      {event.rewards ? (
+      ) : event.rewards ? (
         <Text style={styles.prizePool}>
-          💰 Total Prize:{" "}
-          {event.rewards.coins +
-            (event.rewards.experience || (event.rewards as any).xp || 0) *
-              2}{" "}
-          coins
+          💰 Prize: {event.rewards.coins} coins
         </Text>
       ) : null}
 
-      {/* Participants */}
-      <Text style={styles.detail}>👥 Participants: {participantsText}</Text>
+      <Text style={styles.detail}>👥 {participantsText} participants</Text>
 
-      {/* Hunt Type - Dynamic with Tag Icon */}
-      <Text style={styles.detail}>
-        🏷️ Type:{" "}
-        {(event as any).huntDetails?.difficulty === "Easy"
-          ? "Flash Hunt"
-          : (event as any).huntDetails?.difficulty === "Hard"
-          ? "Epic Journey Hunt"
-          : "Adventure Hunt"}
-      </Text>
+      {showDetails && (
+        <>
+          {/* Detailed info shown only when expanded */}
+          <Text style={styles.detail}>
+            🏷️ Type:{" "}
+            {(event as any).huntDetails?.difficulty === "Easy"
+              ? "Flash Hunt"
+              : (event as any).huntDetails?.difficulty === "Hard"
+              ? "Epic Journey Hunt"
+              : "Adventure Hunt"}
+          </Text>
 
-      {/* Terrain */}
-      <Text style={styles.detail}>
-        🏞️ Terrain:{" "}
-        {(event as any).huntDetails?.terrain ||
-          (event as any).terrain ||
-          "Urban"}
-      </Text>
+          <Text style={styles.detail}>
+            ⭐ Difficulty: {(event as any).huntDetails?.difficulty || "Medium"}
+          </Text>
 
-      {/* Difficulty */}
-      <Text style={styles.detail}>
-        ⭐ Difficulty:{" "}
-        {(event as any).huntDetails?.difficulty ||
-          (event as any).difficulty ||
-          "Medium"}
-      </Text>
+          {(event as any).radius && (
+            <Text style={styles.detail}>
+              📏 Range: {Math.round((event as any).radius / 1000)}km
+            </Text>
+          )}
 
-      {/* Event Duration */}
-      <Text style={styles.detail}>
-        ⏳ Duration:{" "}
-        {(() => {
-          if (startMs === undefined || endMs === undefined) {
-            return "TBD";
-          }
-          const durationMs = endMs - startMs;
-          if (durationMs <= 0) {
-            return "TBD";
-          }
+          <Text style={styles.detail}>
+            ⏳ Duration:{" "}
+            {(() => {
+              if (startMs === undefined || endMs === undefined) {
+                return "TBD";
+              }
+              const durationMs = endMs - startMs;
+              if (durationMs <= 0) {
+                return "TBD";
+              }
+              const hours = Math.floor(durationMs / (1000 * 60 * 60));
+              const days = Math.floor(hours / 24);
+              return days > 0 ? `${days} days` : `${hours} hours`;
+            })()}
+          </Text>
+        </>
+      )}
 
-          const hours = Math.floor(durationMs / (1000 * 60 * 60));
-          const days = Math.floor(hours / 24);
-          const remainingHours = hours % 24;
-
-          if (days > 0) {
-            return remainingHours > 0
-              ? `${days}d ${remainingHours}h`
-              : `${days} day${days > 1 ? "s" : ""}`;
-          } else if (hours > 0) {
-            return `${hours} hour${hours > 1 ? "s" : ""}`;
-          } else {
-            const minutes = Math.floor(durationMs / (1000 * 60));
-            return `${minutes} min${minutes > 1 ? "s" : ""}`;
-          }
-        })()}
-      </Text>
-
-      {/* Hunt Range */}
-      {(event as any).huntDetails?.range ? (
-        <Text style={styles.detail}>
-          📍 Range: {(event as any).huntDetails.range}km radius
-        </Text>
-      ) : typeof (event as any).radius !== "undefined" ? (
-        <Text style={styles.detail}>
-          📏 Range: {Math.round((event as any).radius / 1000)}km radius
-        </Text>
-      ) : null}
-      {/* Dynamic Status with Countdown */}
+      {/* Status with countdown */}
       <Text style={styles.detail}>
         {isExpired ? (
-          "⏰ Status: Expired"
+          "❌ Expired"
         ) : isOngoing ? (
           <>
-            ⏱️ Ends in:{" "}
-            <Text style={styles.countdown}>{countdown || "Soon"}</Text>
+            🟢 Live •{" "}
+            <Text style={styles.countdown}>{countdown || "Ending soon"}</Text>
           </>
         ) : (
           <>
-            🗓️ Starts in:{" "}
-            <Text style={styles.countdown}>{countdown || "Soon"}</Text>
+            � Upcoming •{" "}
+            <Text style={styles.countdown}>{countdown || "Starting soon"}</Text>
           </>
         )}
       </Text>
-      {/* Distance (legacy) */}
-      {event.distance ? (
-        <Text style={styles.distance}>📍 {event.distance}</Text>
-      ) : null}
       {/* Actions */}
       <View style={styles.actionsRow}>
         {!isExpired ? (
@@ -351,12 +321,6 @@ export const EventItem: React.FC<EventItemProps> = ({
           onPress={() => onDetails?.()}
         >
           <Text style={styles.mapButtonText}>Details</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.mapButton, styles.detailsButton]}
-          onPress={() => onMockAR?.()}
-        >
-          <Text style={styles.mapButtonText}>Mock AR</Text>
         </TouchableOpacity>
       </View>
     </Pressable>

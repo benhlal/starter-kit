@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import React from "react";
 import ARScreen from "./ARScreen";
 
@@ -8,7 +7,7 @@ interface ARHuntScreenProps {
 }
 
 const ARHuntScreen: React.FC<ARHuntScreenProps> = ({ eventId, onClose }) => {
-  return <ARScreen eventId={eventId} debugOverlay onClose={onClose} />;
+  return <ARScreen eventId={eventId} onClose={onClose} />;
 };
 
 export default ARHuntScreen;

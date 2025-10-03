@@ -25,7 +25,7 @@ const TestMigration: React.FC = () => {
         .collection("test")
         .doc(testDoc.id)
         .get();
-      if (docSnapshot.exists) {
+      if (docSnapshot.exists()) {
         console.log("✅ Test document retrieved:", docSnapshot.data());
         setTestStatus(
           "✅ Firebase is working! Document created and retrieved."
@@ -52,8 +52,10 @@ const TestMigration: React.FC = () => {
       }
     } catch (error) {
       console.error("❌ Firebase test failed:", error);
-      setTestStatus(`❌ Test failed: ${error.message}`);
-      Alert.alert("Test Failed", `Error: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setTestStatus(`❌ Test failed: ${errorMessage}`);
+      Alert.alert("Test Failed", `Error: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -101,8 +103,10 @@ const TestMigration: React.FC = () => {
       );
     } catch (error) {
       console.error("❌ Failed to create sample event:", error);
-      setTestStatus(`❌ Failed: ${error.message}`);
-      Alert.alert("Error", `Failed to create event: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setTestStatus(`❌ Failed: ${errorMessage}`);
+      Alert.alert("Error", `Failed to create event: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }

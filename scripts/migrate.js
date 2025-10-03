@@ -13,7 +13,6 @@
  */
 
 const admin = require("firebase-admin");
-const path = require("path");
 
 // Initialize Firebase Admin SDK with Application Default Credentials
 const googleServices = require("../android/app/google-services.json");

@@ -150,12 +150,6 @@ function getRandomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function getRandomDate(start, end) {
-  return new Date(
-    start.getTime() + Math.random() * (end.getTime() - start.getTime())
-  );
-}
-
 function generateRandomEvent(index) {
   const template = getRandomElement(eventTemplates);
   const coords = locationCoords[template.region];

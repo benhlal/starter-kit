@@ -20,7 +20,6 @@ import MapView, {
   Polyline,
 } from "react-native-maps";
 import { FirebaseService } from "../../services/firebase/FirebaseService";
-import { isAdmin } from "../../utils/userRoles";
 import { Coin } from "../../types";
 import {
   useEventLocations,
@@ -129,10 +128,9 @@ const MapScreen: React.FC<{
     longitude: number;
   } | null>(null);
   // Event summary visibility (coins / prize / participants)
-  const [showEventSummary, setShowEventSummary] = useState<boolean>(true);
+  const [showEventSummary] = useState<boolean>(true);
   const [eventCoins, setEventCoins] = useState<Coin[]>([]);
   const [creating, setCreating] = useState(false);
-  const [creatingEvent, setCreatingEvent] = useState(false);
 
   // Generate multiple dash segments for a complete dotted circle
   const generateDottedCircleSegments = (
@@ -204,7 +202,7 @@ const MapScreen: React.FC<{
     longitudeDelta: 0.1,
   });
   const { eventLocations, fetchEventLocations } = useEventLocations();
-  const { selectedEvent, setSelectedEvent } = useMapState();
+  const { selectedEvent } = useMapState();
   const { userProfile } = useUserProfile();
   const { setSelectedCoinId } = useSelectedCoin();
   const [centerOnUser, setCenterOnUser] = useRecoilState(mapCenterOnUserState);
@@ -225,11 +223,6 @@ const MapScreen: React.FC<{
       : false;
     return inProfile || inEvent;
   })();
-  const isUserAdmin = isAdmin(
-    (userProfile as any)?.email ||
-      FirebaseService.getCurrentUser?.()?.email ||
-      null
-  );
 
   // Fetch coins for the selected event when active and user is participant
   useEffect(() => {
@@ -426,8 +419,11 @@ const MapScreen: React.FC<{
     if (selectMode) {
       return; // selection handled in onPress prop below where we store custom location
     }
-    // Dismiss selected marker when tapping empty map area
-    setSelectedMarker(null);
+    // Always dismiss selected marker when tapping empty map area
+    if (selectedMarker) {
+      setSelectedMarker(null);
+      return;
+    }
   };
 
   const handleZoomIn = () => {
@@ -637,29 +633,59 @@ const MapScreen: React.FC<{
           </Marker>
         ))}
 
-        {/* Event coin markers (from Firestore) */}
-        {isParticipant && selectedEvent?.status === "active"
-          ? eventCoins.map((coin) => (
+        {/* Event coin markers (from Firestore) - show all event coins */}
+        {eventCoins.map((coin) => (
+          <Marker
+            key={coin.id}
+            coordinate={{
+              latitude: coin.location.latitude,
+              longitude: coin.location.longitude,
+            }}
+            onPress={() => {
+              setSelectedCoinId(coin.id);
+              handleMarkerPress(coin.id, {
+                latitude: coin.location.latitude,
+                longitude: coin.location.longitude,
+              });
+            }}
+          >
+            <View
+              style={[
+                styles.coinMarker,
+                coin.collected && styles.coinMarkerCollected,
+                !coin.collectible && styles.coinMarkerUnavailable,
+              ]}
+            >
+              <Text style={styles.randomCoinText}>
+                {coin.collected ? "✅" : coin.collectible ? "🪙" : "🔒"}
+              </Text>
+            </View>
+          </Marker>
+        ))}
+
+        {/* Show coins from all events for reference (lighter style) */}
+        {!selectedEvent &&
+          eventLocations
+            .filter((loc: EventLocation) => (loc as any).coins > 0)
+            .map((eventLoc: EventLocation) => (
               <Marker
-                key={coin.id}
-                coordinate={{
-                  latitude: coin.location.latitude,
-                  longitude: coin.location.longitude,
-                }}
-                onPress={() => {
-                  setSelectedCoinId(coin.id);
-                  handleMarkerPress(coin.id, {
-                    latitude: coin.location.latitude,
-                    longitude: coin.location.longitude,
-                  });
-                }}
+                key={`event-center-${eventLoc.id}`}
+                coordinate={eventLoc.coordinate ?? eventLoc.location}
+                onPress={() =>
+                  handleMarkerPress(
+                    eventLoc.id,
+                    eventLoc.coordinate ?? eventLoc.location
+                  )
+                }
               >
-                <View style={styles.coinMarker}>
-                  <Text style={styles.randomCoinText}>🪙</Text>
+                <View style={styles.eventCenterMarker}>
+                  <Text style={styles.eventCenterText}>🎯</Text>
+                  <Text style={styles.eventCenterCoins}>
+                    {(eventLoc as any).coins}
+                  </Text>
                 </View>
               </Marker>
-            ))
-          : null}
+            ))}
 
         {/* Custom chosen location marker */}
         {customLocation ? (
@@ -760,72 +786,195 @@ const MapScreen: React.FC<{
         </TouchableOpacity>
       </View>
 
-      {/* Selected marker info */}
+      {/* Selected marker info - Enhanced event details */}
       {selectedMarker && showEventSummary && (
-        <View style={styles.markerInfo} pointerEvents="auto">
-          {(() => {
-            const selected = eventLocations.find(
-              (loc: EventLocation) => loc.id === selectedMarker
-            );
-            const selectedCoin = randomCoins.find(
-              (coin) => coin.id === selectedMarker
-            );
+        <TouchableWithoutFeedback onPress={() => setSelectedMarker(null)}>
+          <View style={styles.markerInfoOverlay}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+              <View style={styles.markerInfo} pointerEvents="auto">
+                {(() => {
+                  const selected = eventLocations.find(
+                    (loc: EventLocation) => loc.id === selectedMarker
+                  );
+                  const selectedCoin = eventCoins.find(
+                    (coin) => coin.id === selectedMarker
+                  );
+                  const selectedRandomCoin = randomCoins.find(
+                    (coin) => coin.id === selectedMarker
+                  );
 
-            if (selected) {
-              const radius = selected.radius;
-              const interaction = selected.interactionType;
-              const rewards = selected.rewards;
-              return (
-                <>
-                  <Text style={styles.infoTitle}>{selected.title}</Text>
-                  {selected.description ? (
-                    <Text style={styles.infoDescription}>
-                      {selected.description}
-                    </Text>
-                  ) : null}
-                  {typeof (selected as any).coins !== "undefined" && (
-                    <Text style={styles.infoCoins}>
-                      Event Coins: 💰{(selected as any).coins}
-                    </Text>
-                  )}
-                  <Text style={styles.infoMeta}>• Type: {selected.type}</Text>
-                  <Text style={styles.infoMeta}>• Radius: {radius}m</Text>
-                  <Text style={styles.infoMeta}>
-                    • Interaction: {interaction}
-                  </Text>
-                  {rewards && (
-                    <Text style={styles.infoMeta}>
-                      • Rewards: {rewards.coins} coins, {rewards.experience} XP
-                    </Text>
-                  )}
-                </>
-              );
-            } else if (selectedCoin) {
-              return (
-                <>
-                  <Text style={styles.infoTitle}>Random Coin</Text>
-                  <Text style={styles.infoDescription}>Collect this coin!</Text>
-                  <Text style={styles.infoCoins}>
-                    Value: 🪙{selectedCoin.value}
-                  </Text>
-                </>
-              );
-            }
-            return null;
-          })()}
-        </View>
+                  if (selected) {
+                    const radius = selected.radius;
+                    const interaction = selected.interactionType;
+                    const rewards = selected.rewards;
+                    const eventCoinsCount = eventCoins.filter(
+                      (coin) => !coin.collected && coin.collectible
+                    ).length;
+                    const totalEventCoins = eventCoins.length;
+                    const participantCount = Array.isArray(
+                      (selected as any).participants
+                    )
+                      ? (selected as any).participants.length
+                      : 0;
+
+                    return (
+                      <>
+                        <View style={styles.infoHeader}>
+                          <Text style={styles.infoTitle}>{selected.title}</Text>
+                          <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => setSelectedMarker(null)}
+                          >
+                            <Text style={styles.closeButtonText}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                        {selected.description ? (
+                          <Text style={styles.infoDescription}>
+                            {selected.description}
+                          </Text>
+                        ) : null}
+
+                        {/* Event Status */}
+                        <View style={styles.infoSection}>
+                          <Text style={styles.infoSectionTitle}>
+                            📊 Event Status
+                          </Text>
+                          <Text style={styles.infoMeta}>
+                            • Status: {(selected as any).status || "Unknown"}
+                          </Text>
+                          <Text style={styles.infoMeta}>
+                            • Type: {selected.type}
+                          </Text>
+                          <Text style={styles.infoMeta}>
+                            • Participants: {participantCount}
+                          </Text>
+                        </View>
+
+                        {/* Coins Information */}
+                        <View style={styles.infoSection}>
+                          <Text style={styles.infoSectionTitle}>🪙 Coins</Text>
+                          {typeof (selected as any).coins !== "undefined" && (
+                            <Text style={styles.infoCoins}>
+                              Total Coins: 💰{(selected as any).coins}
+                            </Text>
+                          )}
+                          {totalEventCoins > 0 && (
+                            <>
+                              <Text style={styles.infoMeta}>
+                                • Available: {eventCoinsCount}/{totalEventCoins}
+                              </Text>
+                              <Text style={styles.infoMeta}>
+                                • Collected: {totalEventCoins - eventCoinsCount}
+                                /{totalEventCoins}
+                              </Text>
+                            </>
+                          )}
+                        </View>
+
+                        {/* Game Rules */}
+                        <View style={styles.infoSection}>
+                          <Text style={styles.infoSectionTitle}>
+                            🎮 Game Rules
+                          </Text>
+                          <Text style={styles.infoMeta}>
+                            • Radius: {radius}m
+                          </Text>
+                          <Text style={styles.infoMeta}>
+                            • Interaction: {interaction}
+                          </Text>
+                          {rewards && (
+                            <Text style={styles.infoMeta}>
+                              • Rewards: {rewards.coins} coins,{" "}
+                              {rewards.experience} XP
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* Quick Actions */}
+                        <View style={styles.infoActions}>
+                          {isParticipant &&
+                            (selected as any).status === "active" && (
+                              <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => {
+                                  // Navigate to AR hunt screen
+                                  setSelectedMarker(null);
+                                  // Add navigation logic here if needed
+                                }}
+                              >
+                                <Text style={styles.actionButtonText}>
+                                  🎯 Start Hunt
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                        </View>
+                      </>
+                    );
+                  } else if (selectedCoin) {
+                    return (
+                      <>
+                        <View style={styles.infoHeader}>
+                          <Text style={styles.infoTitle}>Event Coin</Text>
+                          <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => setSelectedMarker(null)}
+                          >
+                            <Text style={styles.closeButtonText}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <Text style={styles.infoDescription}>
+                          {selectedCoin.collected
+                            ? "This coin has been collected!"
+                            : selectedCoin.collectible
+                            ? "Collect this coin in AR mode!"
+                            : "This coin is not yet available"}
+                        </Text>
+                        <Text style={styles.infoCoins}>
+                          Value: 🪙{selectedCoin.value || 10}
+                        </Text>
+                        {selectedCoin.name && (
+                          <Text style={styles.infoMeta}>
+                            Name: {selectedCoin.name}
+                          </Text>
+                        )}
+                        <Text style={styles.infoMeta}>
+                          Status:{" "}
+                          {selectedCoin.collected
+                            ? "Collected"
+                            : selectedCoin.collectible
+                            ? "Available"
+                            : "Locked"}
+                        </Text>
+                      </>
+                    );
+                  } else if (selectedRandomCoin) {
+                    return (
+                      <>
+                        <View style={styles.infoHeader}>
+                          <Text style={styles.infoTitle}>Random Coin</Text>
+                          <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => setSelectedMarker(null)}
+                          >
+                            <Text style={styles.closeButtonText}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <Text style={styles.infoDescription}>
+                          Collect this coin!
+                        </Text>
+                        <Text style={styles.infoCoins}>
+                          Value: 🪙{selectedRandomCoin.value}
+                        </Text>
+                      </>
+                    );
+                  }
+                  return null;
+                })()}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       )}
-
-      {/* Event Summary Toggle Button */}
-      <TouchableWithoutFeedback
-        onPress={() => setShowEventSummary(!showEventSummary)}
-      >
-        <View style={styles.floatingButtonSecondary}>
-          <Text style={styles.floatingButtonText}>
-            {showEventSummary ? "Hide Info" : "Show Info"}
-          </Text>
-        </View>
-      </TouchableWithoutFeedback>
 
       {/* Floating List Button */}
       <TouchableWithoutFeedback onPress={() => setActiveTab && setActiveTab()}>
@@ -834,15 +983,15 @@ const MapScreen: React.FC<{
         </View>
       </TouchableWithoutFeedback>
 
-      {/* Admin-only: Create ongoing event at current GPS with coins near by */}
-      {isUserAdmin && (
+      {/* Create Event Here (at current location) */}
+      {userLocation && (
         <TouchableOpacity
           style={[
             styles.floatingButton,
-            styles.devCreateEventButton,
-            creatingEvent && styles.devCreateEventButtonDisabled,
+            styles.createEventButton,
+            creating && styles.createEventButtonDisabled,
           ]}
-          disabled={creatingEvent}
+          disabled={creating}
           onPress={async () => {
             try {
               if (!userLocation) {
@@ -861,125 +1010,63 @@ const MapScreen: React.FC<{
                 );
                 return;
               }
-              setCreatingEvent(true);
 
-              const now = new Date();
-              const end = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2h window
-              const eventData: any = {
-                title: "Ongoing AR Hunt",
-                description: "Auto-created nearby test event.",
-                type: "treasure-hunt",
-                status: "active",
+              // Check if user has permission to create events
+              const { getUserPermissions } = require("../../utils/userRoles");
+              const canCreate = getUserPermissions(
+                user?.email || null
+              ).canCreateEvents;
+              if (!canCreate) {
+                Alert.alert(
+                  "Permission Required",
+                  "You don't have permission to create events."
+                );
+                return;
+              }
+
+              setCreating(true);
+
+              // Create event at current location
+              const eventData = {
+                title: `Event at ${new Date().toLocaleDateString()}`,
+                description: "Event created from map location",
                 location: {
                   latitude: userLocation.latitude,
                   longitude: userLocation.longitude,
-                  address: "",
-                  venue: "",
                 },
-                startDate: now.toISOString(),
-                endDate: end.toISOString(),
-                maxParticipants: 100,
-                currentParticipants: 0,
-                participants: [],
-                organizer: { id: userId, name: "You" },
-                tags: ["dev", "nearby"],
-                rewards: { coins: 100, experience: 50 },
-                visibility: "public",
-                huntDetails: {
-                  difficulty: "Easy",
-                  terrain: "Urban",
-                  range: 1,
-                },
-                createdAt: now.toISOString(),
-                updatedAt: now.toISOString(),
-              };
-
-              const eventId = await FirebaseService.createEvent(eventData);
-
-              // Auto-join creator
-              await FirebaseService.joinEvent(userId, eventId);
-
-              // Load event and set as selected so coins render under gating
-              const createdEvent = await FirebaseService.getEventById(eventId);
-              if (createdEvent) {
-                setSelectedEvent(createdEvent as any);
-              }
-
-              // Helper to offset lat/lon by meters east/north
-              const offsetGpsByMeters = (
-                lat: number,
-                lon: number,
-                east: number,
-                north: number
-              ) => {
-                const latRad = (lat * Math.PI) / 180;
-                const dLat = north / 111320; // meters per degree latitude
-                const dLon = east / (111320 * Math.cos(latRad));
-                return { latitude: lat + dLat, longitude: lon + dLon };
-              };
-
-              // Create one coin at exact location and four ~1m away in cardinal directions
-              const here = {
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude,
-              };
-              let lastCoinId: string | null = null;
-              lastCoinId = await FirebaseService.createEventCoin({
-                eventId,
                 createdBy: userId,
-                latitude: here.latitude,
-                longitude: here.longitude,
-                value: 10,
-              });
+                createdAt: new Date(),
+                status: "upcoming" as const,
+                participants: [userId],
+                coins: 100,
+                radius: 1000,
+                interactionType: "tap",
+                rewards: { coins: 50, experience: 25 },
+              };
 
-              // Create four coins ~1m away in cardinal directions
-              const offsets = [
-                { east: 1.0, north: 0.0 }, // East ~1m
-                { east: 0.0, north: 1.0 }, // North ~1m
-                { east: -1.0, north: 0.0 }, // West ~1m
-                { east: 0.0, north: -1.0 }, // South ~1m
-              ];
-              for (const o of offsets) {
-                const { latitude: coinLat, longitude: coinLon } =
-                  offsetGpsByMeters(
-                    userLocation.latitude,
-                    userLocation.longitude,
-                    o.east,
-                    o.north
-                  );
-                lastCoinId = await FirebaseService.createEventCoin({
-                  eventId,
-                  createdBy: userId,
-                  latitude: coinLat,
-                  longitude: coinLon,
-                  value: 10,
-                });
-              }
+              await FirebaseService.createEvent(eventData);
 
-              // Refresh local UI
-              const coins = await FirebaseService.getCoinsForEvent(eventId);
-              setEventCoins(coins);
-              setSelectedMarker(lastCoinId || null);
+              // Refresh event locations
+              await fetchEventLocations();
+
+              // Focus on new event location
               setRingCenter({
                 latitude: userLocation.latitude,
                 longitude: userLocation.longitude,
               });
-              setRingSource("custom");
+              setRingSource("event");
 
-              Alert.alert(
-                "Event created",
-                "Ongoing event created at your GPS with nearby coins."
-              );
+              Alert.alert("Success", "Event created at your current location!");
             } catch (e) {
-              console.warn("Failed to create event + coin", e);
-              Alert.alert("Create failed", "Could not create event and coin.");
+              console.warn("Failed to create event", e);
+              Alert.alert("Create failed", "Could not create event here.");
             } finally {
-              setCreatingEvent(false);
+              setCreating(false);
             }
           }}
         >
           <Text style={styles.floatingButtonText}>
-            {creatingEvent ? "Creating…" : "Create Ongoing Event Here"}
+            {creating ? "Creating…" : "Create Event Here"}
           </Text>
         </TouchableOpacity>
       )}
@@ -1210,6 +1297,41 @@ const styles = StyleSheet.create({
     fontSize: 12, // Smaller text
     textAlign: "center",
   },
+  coinMarkerCollected: {
+    backgroundColor: "#4CAF50", // Green for collected
+    borderColor: "#388E3C",
+  },
+  coinMarkerUnavailable: {
+    backgroundColor: "#9E9E9E", // Gray for unavailable
+    borderColor: "#616161",
+  },
+  eventCenterMarker: {
+    backgroundColor: "#FF5722", // Orange-red for event centers
+    padding: 6,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 30,
+    minHeight: 30,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    borderWidth: 2,
+    borderColor: "#D84315",
+  },
+  eventCenterText: {
+    fontSize: 14,
+    textAlign: "center",
+  },
+  eventCenterCoins: {
+    color: "#FFF",
+    fontSize: 8,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 1,
+  },
   // Zoom controls
   zoomControls: {
     position: "absolute",
@@ -1278,20 +1400,73 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   // Marker info panel
-  markerInfo: {
+  markerInfoOverlay: {
     position: "absolute",
-    bottom: 180,
-    left: 20,
-    right: 20,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+  },
+  markerInfo: {
     backgroundColor: "#1e1e1e",
-    padding: 16,
-    borderRadius: 12,
-    elevation: 8,
+    padding: 20,
+    borderRadius: 16,
+    elevation: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
-    shadowRadius: 6,
-    zIndex: 10,
+    shadowRadius: 8,
+    maxWidth: "90%",
+    maxHeight: "80%",
+  },
+  infoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  closeButton: {
+    backgroundColor: "#333",
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  infoSection: {
+    marginBottom: 16,
+  },
+  infoSectionTitle: {
+    color: "#FFD700",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  infoActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 8,
+  },
+  actionButton: {
+    backgroundColor: "#7B3FE4",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    elevation: 3,
+  },
+  actionButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
   },
   infoTitle: {
     color: "#fff",
@@ -1326,21 +1501,17 @@ const styles = StyleSheet.create({
     elevation: 6,
     zIndex: 10,
   },
-  floatingButtonSecondary: {
-    position: "absolute",
-    bottom: 100, // Higher position than main button
-    alignSelf: "center",
-    backgroundColor: "rgba(0, 122, 255, 0.8)",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 30,
-    elevation: 6,
-    zIndex: 10,
-  },
   floatingButtonText: {
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  createEventButton: {
+    bottom: 150,
+    backgroundColor: "rgba(76, 175, 80, 0.9)", // Green for event creation
+  },
+  createEventButtonDisabled: {
+    backgroundColor: "rgba(76, 175, 80, 0.4)",
   },
   createCoinButton: {
     bottom: 90,
@@ -1348,13 +1519,6 @@ const styles = StyleSheet.create({
   },
   createCoinButtonDisabled: {
     backgroundColor: "rgba(123, 63, 228, 0.4)",
-  },
-  devCreateEventButton: {
-    bottom: 150,
-    backgroundColor: "rgba(255, 99, 71, 0.9)",
-  },
-  devCreateEventButtonDisabled: {
-    backgroundColor: "rgba(255, 99, 71, 0.4)",
   },
 });
 

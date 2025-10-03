@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import {
@@ -27,10 +26,18 @@ ViroMaterials.createMaterials({
 
 ViroAnimations.registerAnimations({
   pop: { properties: { scaleX: 1.2, scaleY: 1.2, scaleZ: 1.2 }, duration: 100 },
-  popBack: { properties: { scaleX: 1.0, scaleY: 1.0, scaleZ: 1.0 }, duration: 120 },
+  popBack: {
+    properties: { scaleX: 1.0, scaleY: 1.0, scaleZ: 1.0 },
+    duration: 120,
+  },
 });
 
-type Target = { id: string; pos: [number, number, number]; collected?: boolean; material: string };
+type Target = {
+  id: string;
+  pos: [number, number, number];
+  collected?: boolean;
+  material: string;
+};
 
 function makeTargets(n = 5): Target[] {
   const mats = ["cylRed", "cylBlue", "cylGreen", "cylPurple", "cylYellow"];
@@ -85,14 +92,22 @@ function MockScene(props: any) {
   }, []);
 
   const onTap = (id: string) => {
-    setTargets((prev) => prev.map((t) => (t.id === id ? { ...t, collected: true, material: "cylCollected" } : t)));
+    setTargets((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, collected: true, material: "cylCollected" } : t
+      )
+    );
   };
 
   return (
-    <ViroARScene ref={sceneRef} >
+    <ViroARScene ref={sceneRef}>
       <ViroAmbientLight color="#FFFFFF" intensity={500} />
       {targets.map((t) => (
-        <ViroNode key={t.id} position={t.pos} transformBehaviors={["billboardY"]}>
+        <ViroNode
+          key={t.id}
+          position={t.pos}
+          transformBehaviors={["billboardY"]}
+        >
           {/* Cylinder-like pillar using a thin tall box */}
           <ViroBox
             width={0.22}
@@ -101,14 +116,16 @@ function MockScene(props: any) {
             materials={[t.material]}
             opacity={t.collected ? 0.4 : 1}
             onClick={() => onTap(t.id)}
-            animation={{ name: t.collected ? undefined : "pop", run: true, loop: false }}
+            animation={{
+              name: t.collected ? undefined : "pop",
+              run: true,
+              loop: false,
+            }}
           />
         </ViroNode>
       ))}
       {/* Expose a generator through viroAppProps */}
-      {props?.sceneNavigator?.viroAppProps?.onInject && (
-        <ViroNode/>
-      )}
+      {props?.sceneNavigator?.viroAppProps?.onInject && <ViroNode />}
     </ViroARScene>
   );
 }
@@ -141,7 +158,7 @@ const MockedARScreen: React.FC<MockedARScreenProps> = ({ onClose }) => {
           </TouchableOpacity>
         )}
       </View>
-  <View style={styles.flex}>{content}</View>
+      <View style={styles.flex}>{content}</View>
       <TouchableOpacity
         style={styles.generateFab}
         onPress={() => setKey((k) => k + 1)}

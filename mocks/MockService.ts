@@ -86,6 +86,35 @@ export class MockService {
     console.log(`User ${userId} joined event ${eventId}`);
   }
 
+  static async deleteEvent(eventId: string): Promise<void> {
+    if (this.isOffline) {
+      throw new Error("Offline: Cannot delete event");
+    }
+
+    await simulateDelay(800);
+    simulateNetworkError(0.06);
+
+    // Find and remove event from mock data
+    const eventIndex = mockEvents.findIndex((event) => event.id === eventId);
+    if (eventIndex === -1) {
+      throw new Error("Event not found");
+    }
+
+    // Remove event
+    mockEvents.splice(eventIndex, 1);
+
+    // Remove associated coins
+    const coinsToRemove = mockCoins.filter((coin) => coin.eventId === eventId);
+    coinsToRemove.forEach((coin) => {
+      const coinIndex = mockCoins.findIndex((c) => c.id === coin.id);
+      if (coinIndex !== -1) {
+        mockCoins.splice(coinIndex, 1);
+      }
+    });
+
+    console.log(`Event ${eventId} deleted from mock data`);
+  }
+
   // Event Locations
   static async getEventLocations(): Promise<EventLocation[]> {
     if (this.isOffline) {

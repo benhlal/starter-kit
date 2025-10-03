@@ -68,14 +68,37 @@ export const useEvents = () => {
         if (appConfig.useMockData) {
           await MockService.joinEvent(eventId, userId);
         } else {
-          // TODO: Implement Firebase join event
-          console.log(`Joining event ${eventId} for user ${userId}`);
+          await FirebaseService.joinEvent(userId, eventId);
+          console.log(
+            `Successfully joined event ${eventId} for user ${userId}`
+          );
         }
 
         // Refresh events after joining
         await fetchEvents();
+
+        // Note: User profile will be updated by ParticipationService
+        // which handles the database update including joinedEvents array
       } catch (err) {
         console.error("Error joining event:", err);
+        throw err;
+      }
+    },
+    [appConfig.useMockData, fetchEvents]
+  );
+
+  const deleteEvent = useCallback(
+    async (eventId: string) => {
+      try {
+        if (appConfig.useMockData) {
+          await MockService.deleteEvent(eventId);
+        } else {
+          await FirebaseService.deleteEvent(eventId);
+        }
+
+        await fetchEvents();
+      } catch (err) {
+        console.error(`[Recoil] Error deleting event ${eventId}:`, err);
         throw err;
       }
     },
@@ -91,6 +114,7 @@ export const useEvents = () => {
     error: error.events,
     fetchEvents,
     joinEvent,
+    deleteEvent,
   };
 };
 

@@ -1,18 +1,17 @@
 import React, { useState } from "react";
-import { View } from "react-native";
+import { View, TouchableOpacity, Text } from "react-native";
 import ProfileScreen from "../Profile/ProfileScreen";
 import EventScreen from "../Events/EventScreen";
 import MapScreen from "../Map/MapScreen";
 import ARScreen from "../AR/ARScreen";
 import ARHuntScreen from "../AR/ARHuntScreen";
-import MockedARScreen from "../AR/MockedARScreen";
+import ARGPSDemo from "../../components/ARGPSDemo";
 import EventDetailsScreen from "../Events/EventDetailsScreen";
 import BottomNav from "../../components/Home/BottomNav/BottomNav";
 import { styles } from "./HomeScreen.styles";
 import LoginScreen from "../Auth/LoginScreen";
 import { useAuthUser } from "../../state/recoil/hooks";
 import { CreateEventModal } from "../../components/Events/CreateEventModal";
-import { getUserPermissions } from "../../utils/userRoles";
 
 const HomeScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"Home" | "Account">("Home");
@@ -23,7 +22,8 @@ const HomeScreen: React.FC = () => {
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [detailsEventId, setDetailsEventId] = useState<string | null>(null);
   const [showARHunt, setShowARHunt] = useState(false);
-  const [showMockAR, setShowMockAR] = useState(false);
+  const [huntingEventId, setHuntingEventId] = useState<string | null>(null);
+  const [showARGPS, setShowARGPS] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [focusLocation, setFocusLocation] = useState<
     { latitude: number; longitude: number; title: string } | undefined
@@ -84,7 +84,8 @@ const HomeScreen: React.FC = () => {
     setDetailsEventId(null);
   };
 
-  const startHuntForEvent = (_eventId: string) => {
+  const startHuntForEvent = (eventId: string) => {
+    setHuntingEventId(eventId); // Store the event ID for AR hunting
     setShowEventDetails(false);
     setTimeout(() => {
       setShowARHunt(true);
@@ -118,9 +119,6 @@ const HomeScreen: React.FC = () => {
               onOpenDetails={(id) => {
                 setDetailsEventId(id);
                 setShowEventDetails(true);
-              }}
-              onOpenMockAR={(_id) => {
-                setShowMockAR(true);
               }}
             />
             {showEventDetails && detailsEventId && (
@@ -158,17 +156,29 @@ const HomeScreen: React.FC = () => {
                 <ARScreen onClose={handleARToggle} />
               </View>
             )}
-            {showARHunt && detailsEventId && (
+            {showARHunt && huntingEventId && (
               <View style={[styles.mapOverlay, styles.mapOverlayVisible]}>
                 <ARHuntScreen
-                  eventId={detailsEventId}
-                  onClose={() => setShowARHunt(false)}
+                  eventId={huntingEventId}
+                  onClose={() => {
+                    setShowARHunt(false);
+                    setHuntingEventId(null); // Clear hunting event when closing
+                  }}
                 />
               </View>
             )}
-            {showMockAR && (
+
+            {showARGPS && (
               <View style={[styles.mapOverlay, styles.mapOverlayVisible]}>
-                <MockedARScreen onClose={() => setShowMockAR(false)} />
+                <ARGPSDemo />
+                <View style={styles.closeButtonContainer}>
+                  <TouchableOpacity
+                    onPress={() => setShowARGPS(false)}
+                    style={styles.closeButton}
+                  >
+                    <Text style={styles.closeButtonText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -185,11 +195,7 @@ const HomeScreen: React.FC = () => {
           <BottomNav
             active={activeTab}
             setActiveTab={handleTabChange}
-            onCreateEvent={() => setCreateOpen(true)}
-            canCreateEvents={
-              getUserPermissions(currentUser.email || null).canCreateEvents
-            }
-            onCollect={handleARToggle}
+            onCollect={() => {}} // Disabled for now
           />
           <CreateEventModal
             isVisible={createOpen}

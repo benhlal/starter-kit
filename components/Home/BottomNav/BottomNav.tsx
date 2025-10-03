@@ -5,19 +5,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 interface Props {
   active?: "Home" | "Account";
   setActiveTab: (tab: "Home" | "Account") => void;
-  onCreateEvent?: () => void;
-  // When true, show the center "+" create button (admins only)
-  canCreateEvents?: boolean;
-  // Open AR collect flow
+  // Open AR collect flow (disabled for now)
   onCollect?: () => void;
 }
 
 const BottomNav: React.FC<Props> = ({
   active,
   setActiveTab,
-  onCreateEvent,
-  canCreateEvents = false,
-  onCollect,
+  onCollect: _onCollect,
 }) => (
   <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
     <View style={styles.bottomNav}>
@@ -34,18 +29,11 @@ const BottomNav: React.FC<Props> = ({
         </Text>
       </TouchableOpacity>
 
-      {/* Center: Collect AR coins (tap). If admin, long-press opens Create Event. */}
-      <TouchableOpacity
-        style={styles.navButton}
-        onPress={onCollect}
-        onLongPress={canCreateEvents ? onCreateEvent : undefined}
-        accessibilityLabel={
-          canCreateEvents ? "Collect (long-press to create)" : "Collect"
-        }
-      >
-        <Text style={styles.icon}>📷</Text>
-        <Text style={styles.navText}>Collect</Text>
-      </TouchableOpacity>
+      {/* Center: Collection Camera (disabled for now) */}
+      <View style={styles.navButton}>
+        <Text style={[styles.icon, styles.disabledText]}>📷</Text>
+        <Text style={[styles.navText, styles.disabledText]}>Collect</Text>
+      </View>
 
       {/* Account tab */}
       <TouchableOpacity
@@ -91,6 +79,9 @@ const styles = StyleSheet.create({
   activeText: {
     color: "#7B3FE4",
     fontWeight: "bold",
+  },
+  disabledText: {
+    opacity: 0.3,
   },
 });
 

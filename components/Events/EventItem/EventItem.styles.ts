@@ -27,11 +27,23 @@ export const styles = StyleSheet.create({
   imageExpired: {
     opacity: 0.5,
   },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
   title: {
     color: "#fff",
     fontSize: 18,
-    marginTop: 8,
     fontWeight: "bold",
+    flex: 1,
+  },
+  expandIcon: {
+    color: "#7B3FE4",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginLeft: 8,
   },
   statusRow: {
     flexDirection: "row",

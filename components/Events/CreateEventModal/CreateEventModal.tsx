@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Platform,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { EventType, EventStatus } from "../../../types";
 import { FirebaseService } from "../../../services/firebase/FirebaseService";
+import { isAdmin } from "../../../utils/userRoles";
 import { createEventModalStyles } from "./CreateEventModal.styles";
 
 interface CreateEventModalProps {
@@ -60,6 +60,9 @@ interface EventFormData {
     | "Park"
     | "Historical";
   huntRange: number;
+  // Admin-specific fields
+  coinCount: number;
+  centerCoins: number;
 }
 
 const initialFormData: EventFormData = {
@@ -90,6 +93,9 @@ const initialFormData: EventFormData = {
   huntDifficulty: "Medium",
   huntTerrain: "Urban",
   huntRange: 2,
+  // Admin-specific initial values
+  coinCount: 20,
+  centerCoins: 5,
 };
 
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
@@ -113,25 +119,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [startDateMode, setStartDateMode] = useState<"date" | "time">("date");
-  const [endDateMode, setEndDateMode] = useState<"date" | "time">("date");
-
-  const eventTypes: EventType[] = [
-    "treasure-hunt",
-    "ar-experience",
-    "community-event",
-    "challenge",
-    "exhibition",
-    "workshop",
-    "social",
-  ];
-
-  const eventStatuses: EventStatus[] = [
-    "upcoming",
-    "active",
-    "completed",
-    "cancelled",
-  ];
+  const [startDateMode, _setStartDateMode] = useState<"date" | "time">("date");
+  const [endDateMode, _setEndDateMode] = useState<"date" | "time">("date");
 
   const handleInputChange = (field: keyof EventFormData, value: any) => {
     if (field === "location") {
@@ -177,7 +166,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
 
     setIsLoading(true);
 
@@ -254,7 +245,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
       const eventId = await FirebaseService.createEvent(eventData);
 
-      Alert.alert("Success", "Event created successfully!", [
+      // Auto-create coins for the event
+      console.log("[CreateEvent] Creating coins for new event:", eventId);
+      await createCoinsForEvent(eventId, formData.location);
+
+      Alert.alert("Success", "Event created successfully with coins!", [
         {
           text: "OK",
           onPress: () => {
@@ -269,6 +264,101 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       Alert.alert("Error", "Failed to create event. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const createCoinsForEvent = async (
+    eventId: string,
+    centerLocation: { latitude: number; longitude: number }
+  ) => {
+    const currentUser = FirebaseService.getCurrentUser?.();
+    const userIsAdmin = isAdmin(currentUser?.email || null);
+
+    const centerCoinsCount = userIsAdmin ? formData.centerCoins : 5;
+    const totalCoinsCount = userIsAdmin ? formData.coinCount : 20;
+    try {
+      const { latitude: centerLat, longitude: centerLon } = centerLocation;
+
+      // Calculate meters per degree for this location
+      const metersPerDegLat = 111320;
+      const metersPerDegLon = 111320 * Math.cos((centerLat * Math.PI) / 180);
+
+      const coinPromises = [];
+
+      // Create center coins (within 100m)
+      for (let i = 0; i < centerCoinsCount; i++) {
+        const distance = Math.random() * 100 + 20; // 20-120 meters from center
+        const angle = Math.random() * 2 * Math.PI;
+
+        const offsetLat = (distance * Math.cos(angle)) / metersPerDegLat;
+        const offsetLon = (distance * Math.sin(angle)) / metersPerDegLon;
+
+        const coinData = {
+          eventId,
+          location: {
+            latitude: centerLat + offsetLat,
+            longitude: centerLon + offsetLon,
+          },
+          collectible: true,
+          collected: false,
+          value: Math.floor(Math.random() * 50) + 25, // 25-74 points
+          rarity: ["common", "uncommon", "rare"][Math.floor(Math.random() * 3)],
+          name: `Center Coin ${i + 1}`,
+          metadata: {
+            source: "event-creation-center",
+            distance: distance.toFixed(1),
+            angle: ((angle * 180) / Math.PI).toFixed(1),
+          },
+        };
+
+        coinPromises.push(FirebaseService.createCoin(coinData));
+      }
+
+      // Create distributed coins in 4km radius
+      const distributedCoinsCount = Math.max(
+        0,
+        totalCoinsCount - centerCoinsCount
+      );
+      for (let i = 0; i < distributedCoinsCount; i++) {
+        const distance = Math.random() * 3800 + 200; // 200m-4km from center
+        const angle = Math.random() * 2 * Math.PI;
+
+        const offsetLat = (distance * Math.cos(angle)) / metersPerDegLat;
+        const offsetLon = (distance * Math.sin(angle)) / metersPerDegLon;
+
+        const coinData = {
+          eventId,
+          location: {
+            latitude: centerLat + offsetLat,
+            longitude: centerLon + offsetLon,
+          },
+          collectible: true,
+          collected: false,
+          value: Math.floor(Math.random() * 100) + 10, // 10-109 points
+          rarity: ["common", "uncommon", "rare", "epic"][
+            Math.floor(Math.random() * 4)
+          ],
+          name: `Hunt Coin ${i + 1}`,
+          metadata: {
+            source: "event-creation-distributed",
+            distance: distance.toFixed(1),
+            angle: ((angle * 180) / Math.PI).toFixed(1),
+          },
+        };
+
+        coinPromises.push(FirebaseService.createCoin(coinData));
+      }
+
+      console.log(
+        `[CreateEvent] Creating ${coinPromises.length} coins for event ${eventId}`
+      );
+      await Promise.all(coinPromises);
+      console.log(
+        `[CreateEvent] Successfully created ${coinPromises.length} coins`
+      );
+    } catch (error) {
+      console.error("Error creating coins for event:", error);
+      // Don't throw - event creation succeeded, coin creation is bonus
     }
   };
 
@@ -482,6 +572,27 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               </View>
             </View>
 
+            <TouchableOpacity
+              style={[
+                createEventModalStyles.input,
+                createEventModalStyles.mapButton,
+              ]}
+              onPress={() => {
+                Alert.alert(
+                  "Choose Location",
+                  "This feature will open a map to let you pick a location by tapping. For now, please enter coordinates manually.",
+                  [{ text: "OK" }]
+                );
+                // TODO: Implement map picker
+                // This should open a map modal where user can tap to select location
+                // and it auto-fills the latitude/longitude fields
+              }}
+            >
+              <Text style={createEventModalStyles.mapButtonText}>
+                📍 Choose on Map
+              </Text>
+            </TouchableOpacity>
+
             <View style={createEventModalStyles.inputGroup}>
               <Text style={createEventModalStyles.label}>Address</Text>
               <TextInput
@@ -521,7 +632,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 style={createEventModalStyles.input}
                 value={formData.maxParticipants.toString()}
                 onChangeText={(text) =>
-                  handleInputChange("maxParticipants", parseInt(text) || 100)
+                  handleInputChange(
+                    "maxParticipants",
+                    parseInt(text, 10) || 100
+                  )
                 }
                 placeholder="100"
                 placeholderTextColor="#999"
@@ -559,7 +673,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   style={createEventModalStyles.input}
                   value={formData.rewardCoins.toString()}
                   onChangeText={(text) =>
-                    handleInputChange("rewardCoins", parseInt(text) || 0)
+                    handleInputChange("rewardCoins", parseInt(text, 10) || 0)
                   }
                   placeholder="100"
                   placeholderTextColor="#999"
@@ -577,7 +691,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   style={createEventModalStyles.input}
                   value={formData.rewardExperience.toString()}
                   onChangeText={(text) =>
-                    handleInputChange("rewardExperience", parseInt(text) || 0)
+                    handleInputChange(
+                      "rewardExperience",
+                      parseInt(text, 10) || 0
+                    )
                   }
                   placeholder="50"
                   placeholderTextColor="#999"
@@ -661,7 +778,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     style={createEventModalStyles.input}
                     value={formData.minLevel.toString()}
                     onChangeText={(text) =>
-                      handleInputChange("minLevel", parseInt(text) || 1)
+                      handleInputChange("minLevel", parseInt(text, 10) || 1)
                     }
                     placeholder="1"
                     placeholderTextColor="#999"
@@ -683,6 +800,70 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     placeholderTextColor="#999"
                   />
                 </View>
+
+                {/* Admin-only coin configuration */}
+                {(() => {
+                  const currentUser = FirebaseService.getCurrentUser?.();
+                  const userIsAdmin = isAdmin(currentUser?.email || null);
+                  return userIsAdmin ? (
+                    <>
+                      <View style={createEventModalStyles.inputGroup}>
+                        <Text style={createEventModalStyles.label}>
+                          🪙 Coin Configuration (Admin)
+                        </Text>
+                      </View>
+
+                      <View style={createEventModalStyles.row}>
+                        <View
+                          style={[
+                            createEventModalStyles.inputGroup,
+                            { flex: 1, marginRight: 8 },
+                          ]}
+                        >
+                          <Text style={createEventModalStyles.label}>
+                            Total Coins
+                          </Text>
+                          <TextInput
+                            style={createEventModalStyles.input}
+                            value={formData.coinCount.toString()}
+                            onChangeText={(text) =>
+                              handleInputChange(
+                                "coinCount",
+                                parseInt(text, 10) || 20
+                              )
+                            }
+                            placeholder="20"
+                            placeholderTextColor="#999"
+                            keyboardType="numeric"
+                          />
+                        </View>
+                        <View
+                          style={[
+                            createEventModalStyles.inputGroup,
+                            { flex: 1, marginLeft: 8 },
+                          ]}
+                        >
+                          <Text style={createEventModalStyles.label}>
+                            Center Coins
+                          </Text>
+                          <TextInput
+                            style={createEventModalStyles.input}
+                            value={formData.centerCoins.toString()}
+                            onChangeText={(text) =>
+                              handleInputChange(
+                                "centerCoins",
+                                parseInt(text, 10) || 5
+                              )
+                            }
+                            placeholder="5"
+                            placeholderTextColor="#999"
+                            keyboardType="numeric"
+                          />
+                        </View>
+                      </View>
+                    </>
+                  ) : null;
+                })()}
               </>
             )}
           </View>

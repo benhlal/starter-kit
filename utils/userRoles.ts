@@ -14,7 +14,9 @@ export interface UserPermissions {
 const ADMIN_EMAILS = ["youness.benhlal.pro@gmail.com"];
 
 export const getUserRole = (email: string | null): UserRole => {
-  if (!email) return "user";
+  if (!email) {
+    return "user";
+  }
   return ADMIN_EMAILS.includes(email.toLowerCase()) ? "admin" : "user";
 };
 
