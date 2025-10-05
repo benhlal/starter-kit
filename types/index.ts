@@ -99,6 +99,9 @@ export interface Event {
     totalPrizePool?: number;
     huntType?: "Flash Hunt" | "Adventure Hunt" | "Epic Journey Hunt";
   };
+  // Event completion tracking
+  completedAt?: string;
+  allCoinsCollected?: boolean;
   // Legacy fields (also support flat terrain/difficulty for backward compatibility)
   terrain?: string;
   difficulty?: string;

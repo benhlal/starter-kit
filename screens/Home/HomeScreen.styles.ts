@@ -39,4 +39,9 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
   },
+  disabledText: {
+    color: "white",
+    padding: 20,
+    textAlign: "center",
+  },
 });

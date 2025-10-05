@@ -141,6 +141,8 @@ const HomeScreen: React.FC = () => {
                 <MapScreen
                   setActiveTab={handleMapToggle}
                   focusLocation={focusLocation}
+                  createOpen={createOpen}
+                  setCreateOpen={setCreateOpen}
                 />
               </View>
             )}
@@ -171,7 +173,9 @@ const HomeScreen: React.FC = () => {
             {showARGPS && (
               <View style={[styles.mapOverlay, styles.mapOverlayVisible]}>
                 {/* <ARGPSDemo /> */}
-                <Text style={{color: 'white', padding: 20, textAlign: 'center'}}>AR GPS Demo temporarily disabled</Text>
+                <Text style={styles.disabledText}>
+                  AR GPS Demo temporarily disabled
+                </Text>
                 <View style={styles.closeButtonContainer}>
                   <TouchableOpacity
                     onPress={() => setShowARGPS(false)}

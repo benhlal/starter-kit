@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, Pressable } from "react-native";
 import { Event } from "../../../types";
 import { useMapState } from "../../../state/recoil/hooks";
 import { styles } from "./EventItem.styles";
+import { isEventJoinable, isEventAllCoinsCollected, getEventStatusLabel } from '../../../utils/eventStatus';
 
 interface EventItemProps {
   event: Event;
@@ -96,8 +97,10 @@ export const EventItem: React.FC<EventItemProps> = ({
     }
   }, [event.endDate]);
   const isExpired = endMs !== undefined ? endMs < now : false;
+  const isCompleted =
+    (event as any).status === "completed" || (event as any).allCoinsCollected;
   const isOngoing = (() => {
-    if (isExpired) {
+    if (isExpired || isCompleted) {
       return false;
     }
     if (startMs === undefined) {
@@ -175,19 +178,10 @@ export const EventItem: React.FC<EventItemProps> = ({
     }
   };
 
-  const statusType: "ongoing" | "expired" | "upcoming" | undefined = isOngoing
-    ? "ongoing"
-    : isExpired
-    ? "expired"
-    : "upcoming";
-  const statusLabel =
-    statusType === "ongoing"
-      ? "Ongoing"
-      : statusType === "expired"
-      ? "Expired"
-      : statusType === "upcoming"
-      ? "Upcoming"
-      : undefined;
+  // Use shared helpers for status and joinability
+  const joinable = isEventJoinable(event);
+  const allCoinsCollected = isEventAllCoinsCollected(event);
+  const statusLabel = getEventStatusLabel(event);
 
   return (
     <Pressable
@@ -220,9 +214,13 @@ export const EventItem: React.FC<EventItemProps> = ({
           <Text
             style={[
               styles.statusBadge,
-              statusType === "ongoing"
+              statusLabel === "All coins collected"
+                ? [styles.statusCompleted, styles.statusRight]
+                : statusLabel === "Ongoing"
                 ? [styles.statusOngoing, styles.statusRight]
-                : statusType === "expired"
+                : statusLabel === "Completed"
+                ? [styles.statusCompleted, styles.statusRight]
+                : statusLabel === "Expired"
                 ? [styles.statusExpired, styles.statusRight]
                 : [styles.statusUpcoming, styles.statusRight],
             ]}
@@ -284,8 +282,10 @@ export const EventItem: React.FC<EventItemProps> = ({
 
       {/* Status with countdown */}
       <Text style={styles.detail}>
-        {isExpired ? (
-          "❌ Expired"
+        {allCoinsCollected ? (
+          "🎉 All coins collected!"
+        ) : statusLabel === "Completed" ? (
+          "✅ Completed"
         ) : isOngoing ? (
           <>
             🟢 Live •{" "}
@@ -300,7 +300,7 @@ export const EventItem: React.FC<EventItemProps> = ({
       </Text>
       {/* Actions */}
       <View style={styles.actionsRow}>
-        {!isExpired ? (
+        {joinable ? (
           <TouchableOpacity
             style={[
               styles.participateButton,

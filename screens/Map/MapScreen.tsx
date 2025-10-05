@@ -34,6 +34,7 @@ import {
 } from "../../state/recoil/atoms";
 import { EventLocation } from "../../types";
 import { useSelectedCoin } from "../../state/recoil/hooks";
+import { CreateEventModal } from "../../components/Events/CreateEventModal/CreateEventModal";
 // Generate random coins around current location
 const generateRandomCoins = (
   centerLat: number,
@@ -104,7 +105,9 @@ const getaroundMapStyle = [
 const MapScreen: React.FC<{
   setActiveTab?: () => void;
   focusLocation?: { latitude: number; longitude: number; title: string };
-}> = ({ setActiveTab, focusLocation }) => {
+  createOpen?: boolean;
+  setCreateOpen?: (open: boolean) => void;
+}> = ({ setActiveTab, focusLocation, createOpen = false, setCreateOpen }) => {
   const mapRef = useRef<MapView>(null);
   const alertLocationError = React.useCallback(() => {
     Alert.alert("Location error", "Couldn't get current position.");
@@ -984,11 +987,43 @@ const MapScreen: React.FC<{
       </TouchableWithoutFeedback>
 
       {/* Create Event Here (at current location) */}
+      {userLocation && setCreateOpen && (
+        <TouchableOpacity
+          style={[styles.floatingButton, styles.createEventButton]}
+          onPress={() => {
+            const user = FirebaseService.getCurrentUser?.();
+            const userId = user?.uid;
+            if (!userId) {
+              Alert.alert("Not signed in", "Please sign in to create events.");
+              return;
+            }
+
+            // Check if user has permission to create events
+            const { getUserPermissions } = require("../../utils/userRoles");
+            const canCreate = getUserPermissions(
+              user?.email || null
+            ).canCreateEvents;
+            if (!canCreate) {
+              Alert.alert(
+                "Permission Required",
+                "You don't have permission to create events."
+              );
+              return;
+            }
+
+            setCreateOpen(true);
+          }}
+        >
+          <Text style={styles.floatingButtonText}>Create Event Here</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Quick Create Ongoing Event */}
       {userLocation && (
         <TouchableOpacity
           style={[
             styles.floatingButton,
-            styles.createEventButton,
+            styles.createOngoingEventButton,
             creating && styles.createEventButtonDisabled,
           ]}
           disabled={creating}
@@ -1026,25 +1061,93 @@ const MapScreen: React.FC<{
 
               setCreating(true);
 
-              // Create event at current location
+              // Create ongoing event at current location
+              // Create ongoing event at current location
               const eventData = {
-                title: `Event at ${new Date().toLocaleDateString()}`,
-                description: "Event created from map location",
+                title: `Ongoing Hunt - ${new Date().toLocaleDateString()}`,
+                description: "Ongoing treasure hunt created from map location",
                 location: {
                   latitude: userLocation.latitude,
                   longitude: userLocation.longitude,
+                  address: "Current GPS location",
+                  venue: "Current location",
                 },
                 createdBy: userId,
-                createdAt: new Date(),
-                status: "upcoming" as const,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                status: "active" as const, // Create as active/ongoing
                 participants: [userId],
-                coins: 100,
+                currentParticipants: 1,
+                maxParticipants: 100,
+                organizer: {
+                  id: userId,
+                  name: user?.displayName || user?.email || "Unknown",
+                },
+                tags: ["ongoing", "treasure-hunt", "map-created"],
+                visibility: "public" as const,
+                coins: 150,
                 radius: 1000,
                 interactionType: "tap",
-                rewards: { coins: 50, experience: 25 },
+                rewards: { coins: 75, experience: 40 },
+                type: "treasure-hunt" as const,
+                startDate: new Date().toISOString(),
+                endDate: new Date(
+                  Date.now() + 24 * 60 * 60 * 1000
+                ).toISOString(), // 24 hours later
               };
 
-              await FirebaseService.createEvent(eventData);
+              console.log("[MAP] Creating event with data:", eventData);
+              const eventId = await FirebaseService.createEvent(eventData);
+              console.log("[MAP] Event created with ID:", eventId);
+
+              // Create 2 coins for this ongoing event
+              const coinPromises = [];
+              console.log("[MAP] Creating 2 coins for event:", eventId);
+              for (let i = 0; i < 2; i++) {
+                // Place coins randomly within 50 meters of the event location
+                const distance = Math.random() * 50 + 10; // 10-60 meters
+                const angle = Math.random() * 2 * Math.PI; // Random direction
+
+                const metersPerDegLat = 111320;
+                const metersPerDegLon =
+                  metersPerDegLat *
+                  Math.cos((userLocation.latitude * Math.PI) / 180);
+                const offsetLat =
+                  (distance * Math.cos(angle)) / metersPerDegLat;
+                const offsetLon =
+                  (distance * Math.sin(angle)) / metersPerDegLon;
+
+                const coinLat = userLocation.latitude + offsetLat;
+                const coinLon = userLocation.longitude + offsetLon;
+
+                const coinData = {
+                  eventId: eventId, // Link coin to this specific event
+                  location: {
+                    latitude: coinLat,
+                    longitude: coinLon,
+                  },
+                  value: Math.floor(Math.random() * 100) + 50, // 50-149 points
+                  material: ["coinCommon", "coinRare", "coinEpic"][
+                    Math.floor(Math.random() * 3)
+                  ],
+                  name: `Event Coin ${i + 1}`,
+                  collectible: true,
+                  collected: false,
+                  createdAt: new Date().toISOString(),
+                  createdBy: userId,
+                  type: "treasure",
+                };
+
+                console.log(`[MAP] Creating coin ${i + 1}:`, coinData);
+                coinPromises.push(FirebaseService.createCoin(coinData));
+              }
+
+              // Wait for all coins to be created
+              const createdCoins = await Promise.all(coinPromises);
+              console.log("[MAP] All coins created:", createdCoins);
+              console.log(
+                `[EVENT_CREATION] Created ongoing event with 2 coins, eventId: ${eventId}`
+              );
 
               // Refresh event locations
               await fetchEventLocations();
@@ -1056,17 +1159,23 @@ const MapScreen: React.FC<{
               });
               setRingSource("event");
 
-              Alert.alert("Success", "Event created at your current location!");
+              Alert.alert(
+                "Success",
+                "Ongoing event created with 2 treasure coins at your current location! Use AR camera to find them."
+              );
             } catch (e) {
-              console.warn("Failed to create event", e);
-              Alert.alert("Create failed", "Could not create event here.");
+              console.warn("Failed to create ongoing event", e);
+              Alert.alert(
+                "Create failed",
+                "Could not create ongoing event here."
+              );
             } finally {
               setCreating(false);
             }
           }}
         >
           <Text style={styles.floatingButtonText}>
-            {creating ? "Creating…" : "Create Event Here"}
+            {creating ? "Creating…" : "Create Ongoing Event"}
           </Text>
         </TouchableOpacity>
       )}
@@ -1126,6 +1235,43 @@ const MapScreen: React.FC<{
             {creating ? "Creating…" : "Create Coin Here"}
           </Text>
         </TouchableOpacity>
+      )}
+
+      {/* Create Event Modal */}
+      {setCreateOpen && (
+        <CreateEventModal
+          isVisible={createOpen}
+          onClose={() => setCreateOpen(false)}
+          onEventCreated={async (eventId) => {
+            // Refresh event locations after creation
+            await fetchEventLocations();
+            // Focus on the new event if we can find it
+            const newEvent = eventLocations.find((e) => e.id === eventId);
+            if (newEvent) {
+              const coord = newEvent.coordinate ?? newEvent.location;
+              setRingCenter(coord);
+              setRingSource("event");
+              // Zoom to the new event
+              mapRef.current?.animateToRegion(
+                {
+                  ...coord,
+                  latitudeDelta: 0.05,
+                  longitudeDelta: 0.05,
+                },
+                1500
+              );
+            }
+          }}
+          initialLocation={
+            userLocation
+              ? {
+                  latitude: userLocation.latitude,
+                  longitude: userLocation.longitude,
+                  address: "Current location",
+                }
+              : undefined
+          }
+        />
       )}
     </View>
   );
@@ -1519,6 +1665,10 @@ const styles = StyleSheet.create({
   },
   createCoinButtonDisabled: {
     backgroundColor: "rgba(123, 63, 228, 0.4)",
+  },
+  createOngoingEventButton: {
+    bottom: 190,
+    backgroundColor: "rgba(255, 152, 0, 0.9)", // Orange for ongoing events
   },
 });
 

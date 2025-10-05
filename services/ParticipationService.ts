@@ -231,6 +231,16 @@ export class ParticipationService {
         };
       }
 
+      // Check if event is completed
+      if (event?.status === "completed" || event?.allCoinsCollected) {
+        return {
+          success: false,
+          fee: actualFee,
+          message:
+            "Cannot join completed event. All coins have been collected!",
+        };
+      }
+
       // Update user profile
       const userRef = firestore().collection("users").doc(userId);
       batch.update(userRef, {

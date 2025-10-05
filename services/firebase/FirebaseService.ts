@@ -116,15 +116,38 @@ export class FirebaseService {
     try {
       const docRef = await firestore()
         .collection(this.EVENTS_COLLECTION)
-        .add({
-          ...event,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-          updatedAt: firestore.FieldValue.serverTimestamp(),
-        });
+        .add(
+          this.stripUndefined({
+            // Strip undefined fields
+            ...event,
+            createdAt: firestore.FieldValue.serverTimestamp(),
+            updatedAt: firestore.FieldValue.serverTimestamp(),
+          })
+        );
 
       return docRef.id;
     } catch (error) {
       console.error("Error creating event:", error);
+      throw error;
+    }
+  }
+
+  static async updateEvent(
+    eventId: string,
+    updates: Partial<Event>
+  ): Promise<void> {
+    try {
+      await firestore()
+        .collection(this.EVENTS_COLLECTION)
+        .doc(eventId)
+        .update(
+          this.stripUndefined({
+            ...updates,
+            updatedAt: firestore.FieldValue.serverTimestamp(),
+          })
+        );
+    } catch (error) {
+      console.error(`Error updating event ${eventId}:`, error);
       throw error;
     }
   }
@@ -207,13 +230,22 @@ export class FirebaseService {
     callback: (coins: Coin[]) => void
   ) {
     try {
+      console.log(`[FIREBASE] Setting up subscription for eventId: ${eventId}`);
       const unsub = firestore()
         .collection(this.COINS_COLLECTION)
         .where("eventId", "==", eventId)
         .onSnapshot(
           (snapshot) => {
-            const coins = snapshot.docs.map((doc) =>
-              this.docToObject<Coin>(doc)
+            console.log(
+              `[FIREBASE] Received ${snapshot.docs.length} documents for event ${eventId}`
+            );
+            const coins = snapshot.docs.map((doc) => {
+              const coinData = this.docToObject<Coin>(doc);
+              console.log(`[FIREBASE] Coin document:`, coinData);
+              return coinData;
+            });
+            console.log(
+              `[FIREBASE] Calling callback with ${coins.length} coins`
             );
             callback(coins);
           },
@@ -676,9 +708,11 @@ export class FirebaseService {
 
   static async createCoin(coinData: any): Promise<string> {
     try {
+      console.log("[FIREBASE] Creating coin with data:", coinData);
       const docRef = await firestore()
         .collection(this.COINS_COLLECTION)
         .add(coinData);
+      console.log(`[FIREBASE] Coin created successfully with ID: ${docRef.id}`);
       return docRef.id;
     } catch (error) {
       console.error("Error creating coin:", error);

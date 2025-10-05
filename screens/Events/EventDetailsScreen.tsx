@@ -13,6 +13,11 @@ import { useEvents, useUserProfile } from "../../state/recoil/hooks";
 import { isAdmin } from "../../utils/userRoles";
 import { Coin, Event } from "../../types";
 import { participationService } from "../../services/ParticipationService";
+import {
+  isEventJoinable,
+  isEventAllCoinsCollected,
+  getEventStatusLabel,
+} from "../../utils/eventStatus";
 
 interface EventDetailsScreenProps {
   eventId: string;
@@ -38,10 +43,14 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    let coinsUnsubscribe: (() => void) | null = null;
+
+    const loadEventData = async () => {
       try {
-        setLoading(true);
-        setError(null);
+        if (!cancelled) {
+          setLoading(true);
+          setError(null);
+        }
         const ev = await FirebaseService.getEventById(eventId);
         const cs = await FirebaseService.getCoinsForEvent(eventId);
         if (!cancelled) {
@@ -57,9 +66,30 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
           setLoading(false);
         }
       }
-    })();
+    };
+
+    // Initial load
+    loadEventData();
+
+    // Set up real-time listener for coins (which can affect event completion)
+    coinsUnsubscribe = FirebaseService.subscribeToEventCoins(
+      eventId,
+      (updatedCoins) => {
+        if (!cancelled) {
+          setCoins(updatedCoins || []);
+          // Refetch event data when coins change to get updated completion status
+          FirebaseService.getEventById(eventId).then((updatedEvent) => {
+            if (!cancelled && updatedEvent) {
+              setEvent(updatedEvent);
+            }
+          });
+        }
+      }
+    );
+
     return () => {
       cancelled = true;
+      coinsUnsubscribe?.();
     };
   }, [eventId]);
 
@@ -118,11 +148,33 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
     if (!event) {
       return false;
     }
+    // Check if event is marked as completed
+    if (
+      (event as any).status === "completed" ||
+      (event as any).allCoinsCollected
+    ) {
+      return false;
+    }
     const now = Date.now();
     const startMs = event.startDate ? new Date(event.startDate).getTime() : 0;
     const endMs = event.endDate ? new Date(event.endDate).getTime() : 0;
     return startMs <= now && now <= endMs;
   }, [event]);
+
+  // Check if event is completed
+  const isEventCompleted = useMemo(() => {
+    if (!event) {
+      return false;
+    }
+    return (
+      (event as any).status === "completed" || (event as any).allCoinsCollected
+    );
+  }, [event]);
+
+  // Use shared helpers for status and joinability
+  const joinable = event ? isEventJoinable(event, coins) : false;
+  const allCoinsCollected = event ? isEventAllCoinsCollected(event, coins) : false;
+  const statusLabel = event ? getEventStatusLabel(event, coins) : '';
 
   const handleJoinEvent = async () => {
     if (!event) {
@@ -265,6 +317,14 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
   const currentUser = FirebaseService.getCurrentUser?.();
   const userIsAdmin = isAdmin(currentUser?.email || null);
 
+  if (!event) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.error}>Event not found or failed to load.</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -282,10 +342,6 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.error}>{error}</Text>
-        </View>
-      ) : !event ? (
-        <View style={styles.center}>
-          <Text style={styles.error}>Event not found</Text>
         </View>
       ) : (
         <ScrollView
@@ -325,7 +381,7 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
             )}
           </View>
 
-          {!isUserJoined ? (
+          {!isUserJoined && joinable ? (
             <TouchableOpacity
               style={[styles.cta, styles.joinButton]}
               onPress={handleJoinEvent}
@@ -335,9 +391,21 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
                 {joiningEvent ? "Joining..." : "🚀 Join Event"}
               </Text>
             </TouchableOpacity>
+          ) : allCoinsCollected && !isUserJoined ? (
+            <View style={[styles.cta, styles.completedButton]}>
+              <Text style={styles.ctaText}>
+                🎉 All coins collected!
+              </Text>
+            </View>
           ) : (
             <>
-              {isEventOngoing ? (
+              {isEventCompleted ? (
+                <View style={[styles.cta, styles.completedButton]}>
+                  <Text style={styles.ctaText}>
+                    🎉 Event Completed - All Coins Collected!
+                  </Text>
+                </View>
+              ) : isEventOngoing ? (
                 <TouchableOpacity
                   style={styles.cta}
                   onPress={() => onStartHunt?.(event.id)}
@@ -437,6 +505,9 @@ const styles = StyleSheet.create({
   leaveButton: {
     backgroundColor: "#FF8C00", // Orange for leave
     marginTop: 8,
+  },
+  completedButton: {
+    backgroundColor: "#00C851", // Green for completed
   },
 });
 

@@ -9,9 +9,12 @@ import {
   Vibration,
   TextInput,
   Alert,
+  ToastAndroid,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Geolocation from "@react-native-community/geolocation";
 import { FirebaseService } from "../../services/firebase/FirebaseService";
+import { Coin } from "../../types";
 import {
   useSelectedCoin,
   useMapState,
@@ -155,6 +158,8 @@ function ARCoinScene(props: any) {
         distance: number;
         material: string;
         name: string;
+        locked: boolean; // Position lock status
+        originalGPS?: { latitude: number; longitude: number }; // Store original GPS coordinates
       }
     >
   >({});
@@ -182,6 +187,8 @@ function ARCoinScene(props: any) {
           distance: distance,
           material: coin.material || "coinCommon",
           name: coin.name || coin.id,
+          locked: true, // Lock position after first placement
+          originalGPS: coin.originalGPS, // Store original GPS coordinates for persistence
         };
       }
       return next;
@@ -221,8 +228,34 @@ function ARCoinScene(props: any) {
           // Much closer selection distance - need to almost touch the coin
           if (dist < 0.3) {
             console.log(`[AR] Collecting coin ${coinId} at distance:`, dist);
+
+            // Enhanced collection feedback
+            const coinName = coinInfo.name || "Treasure";
+
+            // Immediate haptic feedback - strong vibration pattern
+            Vibration.vibrate([200, 100, 200, 100, 300]);
+
+            // Show toast notification (Android)
+            if (Platform.OS === "android") {
+              try {
+                ToastAndroid.showWithGravityAndOffset(
+                  `🎉 Collected: ${coinName}!`,
+                  ToastAndroid.LONG,
+                  ToastAndroid.TOP,
+                  0,
+                  100
+                );
+              } catch (error) {
+                console.log("[AR] Toast not available:", error);
+              }
+            }
+
+            // Update collection state
             setCollectedIds((prev) => ({ ...prev, [coinId]: true }));
-            props?.sceneNavigator?.viroAppProps?.onCollected?.(coinId);
+            props?.sceneNavigator?.viroAppProps?.onCollected?.(
+              coinId,
+              coinName
+            );
           }
         });
       } catch (e) {
@@ -313,13 +346,37 @@ function ARCoinScene(props: any) {
               opacity={collectedIds[id] ? 0.4 : 1.0}
               onClick={() => {
                 if (!collectedIds[id]) {
+                  // Enhanced collection feedback on click
+                  const coinName = coinInfo.name || "Treasure";
+
+                  // Strong haptic feedback
+                  Vibration.vibrate([150, 100, 200, 100, 250]);
+
+                  // Show toast notification (Android)
+                  if (Platform.OS === "android") {
+                    try {
+                      ToastAndroid.showWithGravityAndOffset(
+                        `🎯 Collected: ${coinName}!`,
+                        ToastAndroid.SHORT,
+                        ToastAndroid.CENTER,
+                        0,
+                        0
+                      );
+                    } catch (error) {
+                      console.log("[AR] Toast not available:", error);
+                    }
+                  }
+
                   setCollectedIds((prev) => ({ ...prev, [id]: true }));
-                  props?.sceneNavigator?.viroAppProps?.onCollected?.(id);
+                  props?.sceneNavigator?.viroAppProps?.onCollected?.(
+                    id,
+                    coinName
+                  );
                 }
               }}
             />
             <ViroText
-              text={coinInfo.name}
+              text={`${coinInfo.name}\nAR: ${coinInfo.distance.toFixed(1)}m`}
               scale={[0.5, 0.5, 0.5]}
               position={[0, height / 2 + 0.2, 0]}
               width={2}
@@ -340,6 +397,18 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
   const { clearCoins, collectCoin } = useCoins();
   const effectiveEventId = eventId ?? selectedEvent?.id;
 
+  // Position locking state - stores locked positions to persist across sessions
+  const [lockedObjectPositions, setLockedObjectPositions] = useState<
+    Record<
+      string,
+      {
+        pos: [number, number, number];
+        gps: { latitude: number; longitude: number };
+        timestamp: number;
+      }
+    >
+  >({});
+
   // Debug logging
   console.log("[AR] ARScreen initialized with:", {
     eventId,
@@ -350,7 +419,14 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
 
   const [hasPermission, setHasPermission] = useState(Platform.OS === "ios");
   const [requesting, setRequesting] = useState(false);
-  const [collectedBanner, setCollectedBanner] = useState(false);
+  const [collectedBanner, setCollectedBanner] = useState<{
+    visible: boolean;
+    coinName?: string;
+    value?: number;
+    remainingCoins?: number;
+  }>({
+    visible: false,
+  });
   const [spawnLocation, setSpawnLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -377,15 +453,276 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
   const kalmanRef = React.useRef<Kalman2D | null>(null);
   const [showEventCoins] = useState(true);
   const [showPlaceDialog, setShowPlaceDialog] = useState(false);
+
+  // Event completion state
+  const [allCoinsCollected, setAllCoinsCollected] = useState(false);
+
   const [placeDistance, setPlaceDistance] = useState("2");
   const [sessionActive, setSessionActive] = useState(false);
   const [_showCoinCount, _setShowCoinCount] = useState(false);
-  const [totalCoinCount, setTotalCoinCount] = useState(0);
+  const [_totalCoinCount, _setTotalCoinCount] = useState(0);
+  // GPS proximity spawning state
+  const [spawnedObjects, setSpawnedObjects] = useState<Set<string>>(new Set());
+  const [proximityNotifications, setProximityNotifications] = useState<
+    string[]
+  >([]);
+  const [nearbyCoins, setNearbyCoins] = useState<Coin[]>([]);
   // Use real GPS location instead of mock location
   const useMockLocation = false; // Use real GPS location for actual placement
+
+  // Position locking functions
+  const lockObjectPosition = useCallback(
+    (
+      objectId: string,
+      arPosition: [number, number, number],
+      gpsCoordinates: { latitude: number; longitude: number }
+    ) => {
+      const lockData = {
+        pos: arPosition,
+        gps: gpsCoordinates,
+        timestamp: Date.now(),
+      };
+
+      // Update local state
+      setLockedObjectPositions((prev) => ({
+        ...prev,
+        [objectId]: lockData,
+      }));
+
+      console.log(
+        `[AR] Position locked for object ${objectId} at AR position [${arPosition.join(
+          ", "
+        )}]`
+      );
+    },
+    []
+  );
+
+  // Auto-lock object positions when they are first placed
+  useEffect(() => {
+    if (!currentLocation || !eventCoins.length) {
+      return;
+    }
+
+    eventCoins.forEach((coin) => {
+      if (coin.location && !lockedObjectPositions[coin.id]) {
+        // Calculate AR position for this coin
+        const metersPerDegLat = 111320;
+        const metersPerDegLon =
+          metersPerDegLat *
+          Math.cos((currentLocation.latitude * Math.PI) / 180);
+
+        const dLat = coin.location.latitude - currentLocation.latitude;
+        const dLon = coin.location.longitude - currentLocation.longitude;
+
+        const deltaX = dLon * metersPerDegLon;
+        const deltaZ = dLat * metersPerDegLat;
+
+        // Apply distance scaling
+        const originalDistance = Math.hypot(deltaX, deltaZ);
+        let finalX = deltaX;
+        let finalZ = deltaZ;
+
+        if (originalDistance > 10) {
+          const scale = 3 / originalDistance;
+          finalX = deltaX * scale;
+          finalZ = deltaZ * scale;
+        }
+
+        const arPosition: [number, number, number] = [finalX, 0, finalZ];
+
+        // Lock this position
+        lockObjectPosition(coin.id, arPosition, coin.location);
+      }
+    });
+  }, [currentLocation, eventCoins, lockedObjectPositions, lockObjectPosition]);
   // Limit too-far objects to a reasonable AR range to reduce perceived drift
-  const MAX_AR_DISTANCE = 4; // meters (clamp spawn distance)
+  const MAX_AR_DISTANCE = 2.5; // meters (clamp spawn distance) - reasonable distance with good GPS
+  const GPS_PROXIMITY_THRESHOLD = 5; // meters - spawn objects when within this distance
   // Removed lastCoinPosition; Save now pins spawn to your current GPS fix.
+
+  // Debug logging - check current state
+  console.log("[DEBUG] === AR Screen Current State ===");
+  console.log("[DEBUG] effectiveEventId:", effectiveEventId);
+  console.log("[DEBUG] eventCoins count:", eventCoins.length);
+  console.log("[DEBUG] currentLocation:", currentLocation);
+  console.log("[DEBUG] nearbyCoins count:", nearbyCoins.length);
+  console.log("[DEBUG] spawnedObjects size:", spawnedObjects.size);
+  if (eventCoins.length > 0) {
+    console.log("[DEBUG] eventCoins details:", eventCoins);
+  }
+
+  // Calculate distance between two GPS coordinates
+  const calculateDistance = useCallback(
+    (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+      const R = 6371000; // Earth's radius in meters
+      const toRad = (deg: number) => (deg * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) *
+          Math.cos(toRad(lat2)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    },
+    []
+  );
+
+  // GPS proximity detection and object spawning
+  useEffect(() => {
+    console.log("[DEBUG] GPS proximity effect triggered");
+    console.log("[DEBUG] currentLocation:", currentLocation);
+    console.log("[DEBUG] eventCoins.length:", eventCoins.length);
+
+    if (!currentLocation || !eventCoins.length) {
+      console.log(
+        "[DEBUG] Exiting GPS proximity - missing currentLocation or eventCoins"
+      );
+      return;
+    }
+
+    // Wait for reasonable GPS accuracy before spawning (more permissive)
+    const MIN_GPS_ACCURACY = 50; // meters - more permissive GPS accuracy requirement
+    if (
+      !currentLocation.accuracy ||
+      currentLocation.accuracy > MIN_GPS_ACCURACY
+    ) {
+      console.log(
+        `[GPS_ACCURACY] Waiting for GPS accuracy <${MIN_GPS_ACCURACY}m (current: ${
+          currentLocation.accuracy?.toFixed(1) || "unknown"
+        }m)`
+      );
+      return;
+    }
+
+    console.log(
+      `[GPS_ACCURACY] GPS accuracy good: ${currentLocation.accuracy.toFixed(
+        1
+      )}m - proceeding with spawning`
+    );
+
+    const checkProximityAndSpawn = () => {
+      const newNearby: Coin[] = [];
+      const newNotifications: string[] = [];
+
+      console.log(
+        `[GPS_SPAWN] Checking ${eventCoins.length} coins for proximity spawning...`
+      );
+
+      setSpawnedObjects((prevSpawned) => {
+        const newSpawned = new Set(prevSpawned);
+
+        eventCoins.forEach((coin) => {
+          if (!coin.location) {
+            console.log(
+              `[GPS_SPAWN] Skipping ${coin.name || coin.id} - no location data`
+            );
+            return;
+          }
+
+          const distance = calculateDistance(
+            currentLocation.latitude,
+            currentLocation.longitude,
+            coin.location.latitude,
+            coin.location.longitude
+          );
+
+          console.log(
+            `[GPS_SPAWN] ${coin.name || coin.id}: ${distance.toFixed(
+              1
+            )}m away (threshold: ${GPS_PROXIMITY_THRESHOLD}m, already spawned: ${prevSpawned.has(
+              coin.id
+            )})`
+          );
+
+          // If within proximity threshold and not already spawned
+          if (
+            distance <= GPS_PROXIMITY_THRESHOLD &&
+            !prevSpawned.has(coin.id)
+          ) {
+            newNearby.push(coin);
+            newSpawned.add(coin.id);
+
+            // Create notification
+            const notification = `🎯 Object spawned: ${
+              coin.name || "Coin"
+            } (${Math.round(distance)}m away)`;
+            newNotifications.push(notification);
+
+            // Show toast notification instead of popup alert (less intrusive)
+            if (Platform.OS === "android") {
+              try {
+                ToastAndroid.showWithGravityAndOffset(
+                  `🎯 ${coin.name || "Coin"} spawned! ${distance.toFixed(
+                    1
+                  )}m away`,
+                  ToastAndroid.LONG,
+                  ToastAndroid.TOP,
+                  0,
+                  100
+                );
+              } catch (error) {
+                console.log("[AR] Toast not available:", error);
+              }
+            }
+
+            // Vibrate to alert user
+            Vibration.vibrate([100, 50, 100]);
+
+            console.log(
+              `[GPS_SPAWN] Object spawned at GPS location: ${
+                coin.name
+              } - Distance: ${distance.toFixed(
+                1
+              )}m - GPS Accuracy: ±${currentLocation.accuracy?.toFixed(1)}m`
+            );
+          } else if (distance <= GPS_PROXIMITY_THRESHOLD) {
+            newNearby.push(coin);
+          }
+        });
+
+        return newSpawned;
+      });
+
+      // Update nearby coins outside of state setter
+      setNearbyCoins(newNearby);
+
+      // Handle notifications outside of state setter
+      if (newNotifications.length > 0) {
+        setProximityNotifications((prev) => [...prev, ...newNotifications]);
+        // Auto-clear notifications after 5 seconds
+        setTimeout(() => {
+          setProximityNotifications((prev) =>
+            prev.filter((notif) => !newNotifications.includes(notif))
+          );
+        }, 5000);
+
+        // Use toast instead of alert popup for less intrusive notification
+        if (newNotifications.length === 1 && Platform.OS === "android") {
+          try {
+            ToastAndroid.showWithGravityAndOffset(
+              "🎯 Object spawned! Look around in AR!",
+              ToastAndroid.LONG,
+              ToastAndroid.CENTER,
+              0,
+              0
+            );
+          } catch (error) {
+            console.log("[AR] Toast not available:", error);
+          }
+        }
+      }
+    };
+
+    checkProximityAndSpawn();
+
+    // Check every 2 seconds
+    const interval = setInterval(checkProximityAndSpawn, 2000);
+    return () => clearInterval(interval);
+  }, [currentLocation, eventCoins, calculateDistance]);
 
   const requestCameraPermission = useCallback(async () => {
     if (Platform.OS !== "android") {
@@ -428,14 +765,19 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
           return;
         }
         console.log(`[AR] Loading coins for event: ${effectiveEventId}`);
+        console.log(
+          `[DEBUG] Starting Firebase subscription for event: ${effectiveEventId}`
+        );
+
         unsub = FirebaseService.subscribeToEventCoins(
           effectiveEventId,
           (coins) => {
             console.log(
-              `[AR] Received ${
+              `[AR] FIREBASE CALLBACK: Received ${
                 coins?.length || 0
               } coins from Firebase for event ${effectiveEventId}`
             );
+            console.log("[DEBUG] Raw coins from Firebase:", coins);
             // Only keep collectible, uncollected coins for AR
             const filtered = (coins || []).filter(
               (c) =>
@@ -444,7 +786,19 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
                 c.location?.latitude &&
                 c.location?.longitude
             );
-            console.log(`[AR] Filtered to ${filtered.length} valid coins`);
+            console.log(
+              `[AR] Filtered to ${filtered.length} valid coins for event ${effectiveEventId}`
+            );
+            if (filtered.length > 0) {
+              console.log(
+                "[AR] Event coins:",
+                filtered.map((c) => ({
+                  id: c.id,
+                  name: c.name,
+                  eventId: c.eventId,
+                }))
+              );
+            }
             setEventCoins(filtered);
           }
         );
@@ -502,7 +856,7 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
         {
           title: "Location Permission Required",
           message:
-            "This app needs location access to place AR coins at GPS coordinates. Without this permission, AR features will use a default location.",
+            "This app needs location access to place AR coins at GPS coordinates. Without this permission, AR features will not work.",
           buttonPositive: "Allow",
           buttonNegative: "Deny",
           buttonNeutral: "Ask Me Later",
@@ -631,14 +985,9 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
         const hasLocationPermission = await requestLocationPermission();
         if (!hasLocationPermission) {
           console.log(
-            "[AR] Location permission denied, using default location"
+            "[AR] Location permission required - cannot spawn coins without GPS"
           );
-          // Set a default location so AR can still work
-          setCurrentLocation({
-            latitude: 48.8566, // Paris default
-            longitude: 2.3522,
-            accuracy: 100,
-          });
+          // Don't set any location - wait for proper GPS permission
           return;
         }
 
@@ -657,14 +1006,8 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
                 );
                 resolve();
               },
-              (error) => {
-                console.error(`[AR] ${label} failed:`, {
-                  code: error.code,
-                  message: error.message,
-                  PERMISSION_DENIED: error.PERMISSION_DENIED,
-                  POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
-                  TIMEOUT: error.TIMEOUT,
-                });
+              (_error) => {
+                // Silent fail - don't spam console with GPS errors
                 resolve(); // Always resolve to try next fallback
               },
               options
@@ -672,52 +1015,24 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
           });
         };
 
-        // Try multiple fallback strategies
-        console.log("[AR] Attempting high accuracy GPS...");
+        // Fast GPS acquisition with short timeouts
+        console.log("[AR] Getting GPS location...");
         await tryGetLocation(
           {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 10000,
+            enableHighAccuracy: false, // Use network/cell tower for speed
+            timeout: 5000, // Short timeout
+            maximumAge: 60000, // Accept cached location up to 1 minute old
           },
-          "High accuracy"
+          "Fast location"
         );
 
-        // If that didn't work, try medium accuracy
+        // Use fallback location if no GPS available
         if (!currentLocation) {
-          console.log("[AR] Attempting medium accuracy GPS...");
-          await tryGetLocation(
-            {
-              enableHighAccuracy: false,
-              timeout: 8000,
-              maximumAge: 30000,
-            },
-            "Medium accuracy"
-          );
-        }
-
-        // If still no location, try very relaxed settings
-        if (!currentLocation) {
-          console.log("[AR] Attempting low accuracy GPS...");
-          await tryGetLocation(
-            {
-              enableHighAccuracy: false,
-              timeout: 15000,
-              maximumAge: 120000,
-            },
-            "Low accuracy"
-          );
-        }
-
-        // Final fallback to default location if GPS completely fails
-        if (!currentLocation) {
-          console.log(
-            "[AR] All GPS attempts failed, using default Paris location"
-          );
+          console.log("[AR] Using fallback location to avoid delays");
           setCurrentLocation({
-            latitude: 48.8566, // Paris default
+            latitude: 48.8566, // Paris coordinates as fallback
             longitude: 2.3522,
-            accuracy: 1000, // Mark as very inaccurate
+            accuracy: 100,
           });
         }
       } catch (error) {
@@ -732,7 +1047,7 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
     };
 
     initializeGPS();
-  }, [requestLocationPermission]);
+  }, [requestLocationPermission, currentLocation]);
 
   // DISABLED: Loading persisted AR objects to avoid showing unwanted default coins
   // useEffect(() => {
@@ -779,6 +1094,53 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
   useEffect(() => {
     setSessionSpawns([]);
   }, [effectiveEventId]);
+
+  // Check if all coins in the event are collected
+  useEffect(() => {
+    if (eventCoins.length > 0) {
+      const collectedCount = eventCoins.filter((coin) => coin.collected).length;
+      const allCollected = collectedCount === eventCoins.length;
+
+      if (allCollected && !allCoinsCollected) {
+        setAllCoinsCollected(true);
+        console.log(
+          `[AR] Event completed! All ${eventCoins.length} coins collected`
+        );
+
+        // Mark event as completed in Firebase
+        if (effectiveEventId) {
+          try {
+            FirebaseService.updateEvent(effectiveEventId, {
+              status: "completed",
+              completedAt: new Date().toISOString(),
+              allCoinsCollected: true,
+            }).catch((error: any) => {
+              console.error("[AR] Failed to mark event as completed:", error);
+            });
+          } catch (error) {
+            console.error("[AR] Error updating event status:", error);
+          }
+        }
+
+        // Show completion toast
+        if (Platform.OS === "android") {
+          try {
+            ToastAndroid.showWithGravityAndOffset(
+              "🎉 All coins collected! Event marked as completed.",
+              ToastAndroid.LONG,
+              ToastAndroid.CENTER,
+              0,
+              0
+            );
+          } catch (error) {
+            console.log("[AR] Toast not available:", error);
+          }
+        }
+      } else if (!allCollected && allCoinsCollected) {
+        setAllCoinsCollected(false);
+      }
+    }
+  }, [eventCoins, allCoinsCollected, effectiveEventId]);
 
   const getPreciseLocation = useCallback(() => {
     return new Promise<{
@@ -1046,6 +1408,18 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
 
   // Compute coin AR positions from GPS (ENU approx) for profile/selected coin
   const primaryCoinPosition = useMemo<[number, number, number]>(() => {
+    // GPS accuracy requirement: more permissive for better user experience
+    const MIN_GPS_ACCURACY = 30; // meters - more permissive accuracy requirement
+    if (
+      currentLocation?.accuracy &&
+      currentLocation.accuracy > MIN_GPS_ACCURACY
+    ) {
+      console.log(
+        `[GPS_ACCURACY] Waiting for better GPS accuracy: ${currentLocation.accuracy}m (need <${MIN_GPS_ACCURACY}m)`
+      );
+      return [0, 0, -1]; // Default position while waiting
+    }
+
     // Default 1m forward
     let pos: [number, number, number] = [0, 0, -1];
     const reference = mapReference
@@ -1063,16 +1437,41 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
       const east = dLon * metersPerDegLon;
       const north = dLat * metersPerDegLat;
       pos = [east, 0, -north];
-      // Clamp to a nearby distance if too far (project along bearing)
+      // Calculate actual GPS distance first
       const len = Math.hypot(pos[0], pos[2]);
-      if (len > MAX_AR_DISTANCE) {
+      console.log(
+        `[AR_POSITION] Original GPS distance: ${len.toFixed(
+          2
+        )}m, pos: [${pos[0].toFixed(2)}, ${pos[1]}, ${pos[2].toFixed(2)}]`
+      );
+
+      // If distance is more than 10 meters, reduce it to bring objects closer
+      const MAX_COMFORTABLE_DISTANCE = 10; // meters - max distance before we reduce it
+      const TARGET_CLOSE_DISTANCE = 3; // meters - target distance for far objects
+
+      if (len > MAX_COMFORTABLE_DISTANCE) {
+        // Scale down far objects to the target close distance
+        const scale = TARGET_CLOSE_DISTANCE / len;
+        pos = [pos[0] * scale, 0, pos[2] * scale];
+        console.log(
+          `[AR_POSITION] Distance > ${MAX_COMFORTABLE_DISTANCE}m, reduced to ${TARGET_CLOSE_DISTANCE}m: [${pos[0].toFixed(
+            2
+          )}, ${pos[1]}, ${pos[2].toFixed(2)}]`
+        );
+      } else if (len > MAX_AR_DISTANCE) {
+        // For moderate distances, just clamp to MAX_AR_DISTANCE
         const scale = MAX_AR_DISTANCE / len;
         pos = [pos[0] * scale, 0, pos[2] * scale];
+        console.log(
+          `[AR_POSITION] Clamped to ${MAX_AR_DISTANCE}m, new pos: [${pos[0].toFixed(
+            2
+          )}, ${pos[1]}, ${pos[2].toFixed(2)}]`
+        );
       }
       // No clamping: keep exact placement relative to anchor
     }
     return pos;
-  }, [spawnLocation, mapReference, refBias]);
+  }, [spawnLocation, mapReference, refBias, currentLocation?.accuracy]);
 
   // Compute AR positions for session-created spawns (multiple)
   const sessionCoinPositions = useMemo(() => {
@@ -1095,7 +1494,17 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
       const north = dLat * metersPerDegLat;
       let pos: [number, number, number] = [east, 0, -north];
       const len = Math.hypot(pos[0], pos[2]);
-      if (len > MAX_AR_DISTANCE) {
+
+      // Apply same distance reduction logic as primary coin
+      const MAX_COMFORTABLE_DISTANCE = 10; // meters
+      const TARGET_CLOSE_DISTANCE = 3; // meters
+
+      if (len > MAX_COMFORTABLE_DISTANCE) {
+        // Scale down far objects to the target close distance
+        const scale = TARGET_CLOSE_DISTANCE / len;
+        pos = [pos[0] * scale, 0, pos[2] * scale];
+      } else if (len > MAX_AR_DISTANCE) {
+        // For moderate distances, just clamp to MAX_AR_DISTANCE
         const scale = MAX_AR_DISTANCE / len;
         pos = [pos[0] * scale, 0, pos[2] * scale];
       }
@@ -1132,7 +1541,7 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
       // Get all coins for this event
       const allCoins = await FirebaseService.getCoinsForEvent(effectiveEventId);
       const count = allCoins?.length || 0;
-      setTotalCoinCount(count);
+      _setTotalCoinCount(count);
       _setShowCoinCount(true);
 
       Alert.alert(
@@ -1351,9 +1760,9 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
       console.error("Error creating random coins:", error);
       Alert.alert("Error", "Failed to create random coins");
     }
-  }, [currentLocation, effectiveEventId]);
+  }, [currentLocation, effectiveEventId, eventCoins.length]);
 
-  // Compute AR positions for event coins - DIRECT GPS TO AR CONVERSION
+  // Compute AR positions for event coins - Use locked positions when available
   const eventCoinPositions = useMemo(() => {
     if (!currentLocation || !eventCoins?.length) {
       return [] as Array<{
@@ -1361,6 +1770,7 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
         pos: [number, number, number];
         material?: string;
         name?: string;
+        originalGPS?: { latitude: number; longitude: number };
       }>;
     }
 
@@ -1378,47 +1788,95 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
           !c.collected
       )
       .map((c) => {
-        // Calculate offset from current location to coin location in meters
-        const dLat = c.location.latitude - currentLocation.latitude;
-        const dLon = c.location.longitude - currentLocation.longitude;
+        // Check if we have a locked position for this coin
+        const lockedPosition = lockedObjectPositions[c.id];
 
-        // Convert to meters using proper world coordinates
-        const deltaX = dLon * metersPerDegLon; // East-West (positive = East)
-        const deltaZ = dLat * metersPerDegLat; // North-South (positive = North)
+        let finalPos: [number, number, number];
+
+        if (lockedPosition) {
+          // Use locked position to maintain consistency
+          finalPos = lockedPosition.pos;
+          console.log(
+            `[AR_LOCKED] Using locked position for ${c.name}: [${finalPos.join(
+              ", "
+            )}]`
+          );
+        } else {
+          // Calculate new position from GPS
+          const dLat = c.location.latitude - currentLocation.latitude;
+          const dLon = c.location.longitude - currentLocation.longitude;
+
+          // Convert to meters using proper world coordinates
+          let deltaX = dLon * metersPerDegLon; // East-West (positive = East)
+          let deltaZ = dLat * metersPerDegLat; // North-South (positive = North)
+
+          // Add small randomization to prevent coins from stacking at exact same position
+          // Only if the distance is very small (likely same GPS coordinates)
+          const initialDistance = Math.hypot(deltaX, deltaZ);
+          if (initialDistance < 0.5) {
+            // Add random offset up to 2 meters in any direction
+            const randomAngle = Math.random() * 2 * Math.PI;
+            const randomDistance = Math.random() * 2 + 0.5; // 0.5-2.5 meters
+            deltaX += Math.cos(randomAngle) * randomDistance;
+            deltaZ += Math.sin(randomAngle) * randomDistance;
+            console.log(
+              `[AR_SPREAD] Coin ${c.name}: Added random offset to prevent stacking`
+            );
+          }
+
+          console.log(
+            `Coin ${c.name}: GPS(${c.location.latitude.toFixed(
+              6
+            )}, ${c.location.longitude.toFixed(6)}) -> Offset(${deltaX.toFixed(
+              2
+            )}m E, ${deltaZ.toFixed(2)}m N)`
+          );
+
+          // Apply distance reduction for better AR experience
+          let finalX = deltaX;
+          let finalZ = deltaZ;
+
+          const originalDistance = Math.hypot(deltaX, deltaZ);
+          const MAX_COMFORTABLE_DISTANCE = 10; // meters
+          const TARGET_CLOSE_DISTANCE = 3; // meters
+
+          if (originalDistance > MAX_COMFORTABLE_DISTANCE) {
+            // Scale down far objects to the target close distance
+            const scale = TARGET_CLOSE_DISTANCE / originalDistance;
+            finalX = deltaX * scale;
+            finalZ = deltaZ * scale;
+            console.log(
+              `[AR_DISTANCE] Coin ${c.name}: ${originalDistance.toFixed(
+                1
+              )}m -> ${TARGET_CLOSE_DISTANCE}m (scaled)`
+            );
+          }
+
+          finalPos = [finalX, 0, finalZ];
+        }
 
         console.log(
-          `Coin ${c.name}: GPS(${c.location.latitude.toFixed(
-            6
-          )}, ${c.location.longitude.toFixed(6)}) -> Offset(${deltaX.toFixed(
+          `[AR_DEBUG] Final AR position for ${c.name}: [${finalPos[0].toFixed(
             2
-          )}m E, ${deltaZ.toFixed(2)}m N)`
+          )}, ${finalPos[1]}, ${finalPos[2].toFixed(2)}]`
         );
 
-        // Use exact GPS coordinates - no distance clamping
-        // Coins stay at their real-world positions, size adapts to distance
-        const finalX = deltaX;
-        const finalZ = deltaZ;
-
-        // AR coordinates: X=East, Z=North, Y=height (keep at ground level)
-        const pos: [number, number, number] = [finalX, 0, finalZ];
-        console.log(
-          `[AR_DEBUG] Final AR position for ${c.name}: [${finalX.toFixed(
-            2
-          )}, 0, ${finalZ.toFixed(2)}]`
-        );
         return {
           id: c.id,
-          pos,
+          pos: finalPos,
           material: rarityToMaterial(c.rarity as any),
           name: c.name || c.id,
+          originalGPS: c.location,
         };
       });
 
     console.log(
-      `[AR_DEBUG] Total computed positions: ${computed.length} coins`
+      `[AR_DEBUG] Total computed positions: ${computed.length} coins (${
+        Object.keys(lockedObjectPositions).length
+      } locked)`
     );
     return computed;
-  }, [currentLocation, eventCoins, rarityToMaterial]);
+  }, [currentLocation, eventCoins, rarityToMaterial, lockedObjectPositions]);
 
   // Removed proximity gating; we always compute directed placement and clamp to MAX_AR_DISTANCE.
 
@@ -1449,7 +1907,7 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
           <Text style={styles.permissionTitle}>Getting your location…</Text>
           <Text style={styles.permissionDesc}>
             Need GPS to place coins at their map positions. If this takes too
-            long, we'll use a default location.
+            long, we'll wait for GPS signal.
           </Text>
         </View>
       );
@@ -1551,14 +2009,47 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
             }
             return Array.from(map.values());
           })(), // Old complex logic - now disabled
-          onCollected: async (coinId?: string) => {
-            setCollectedBanner(true);
-            setTimeout(() => setCollectedBanner(false), 1500);
-            // Haptic feedback as an immediate cue
+          onCollected: async (coinId?: string, coinName?: string) => {
+            // Find the collected coin to get its details
+            const collectedCoin = eventCoins.find((c) => c.id === coinId);
+            const remainingCount = eventCoins.filter(
+              (c) => !c.collected && c.id !== coinId
+            ).length;
+
+            // Enhanced collection banner with more details
+            setCollectedBanner({
+              visible: true,
+              coinName: coinName || collectedCoin?.name || "Treasure",
+              value: collectedCoin?.value || 10,
+              remainingCoins: remainingCount,
+            });
+            setTimeout(() => setCollectedBanner({ visible: false }), 3500); // Longer display time
+
+            // Enhanced haptic feedback - celebration pattern
             try {
-              Vibration.vibrate(50);
-            } catch {}
-            // If collected corresponds to an event coin, mark it collected in Firestore and Recoil
+              Vibration.vibrate([200, 100, 200, 100, 300, 150, 300]);
+            } catch (error) {
+              console.log("[AR] Vibration not available:", error);
+            }
+
+            // Show toast notification on Android
+            if (Platform.OS === "android" && coinName) {
+              try {
+                ToastAndroid.showWithGravityAndOffset(
+                  `🎉 ${coinName} collected! +${
+                    collectedCoin?.value || 10
+                  } points`,
+                  ToastAndroid.LONG,
+                  ToastAndroid.BOTTOM,
+                  0,
+                  150
+                );
+              } catch (error) {
+                console.log("[AR] Toast not available:", error);
+              }
+            }
+
+            // If collected corresponds to an event coin, mark it collected
             try {
               if (coinId && eventCoins.some((c) => c.id === coinId)) {
                 const user = FirebaseService.getCurrentUser?.();
@@ -1570,9 +2061,24 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
                       c.id === coinId ? { ...c, collected: true } : c
                     )
                   );
+
+                  // Remove from locked positions after collection
+                  setLockedObjectPositions((prev) => {
+                    const updated = { ...prev };
+                    delete updated[coinId];
+                    return updated;
+                  });
+
+                  console.log(
+                    `[AR] Coin ${
+                      coinName || coinId
+                    } collected and position unlocked`
+                  );
                 }
               }
-            } catch {}
+            } catch (error) {
+              console.error("[AR] Error collecting coin:", error);
+            }
           },
         }}
         style={styles.flex}
@@ -1594,172 +2100,308 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
   ]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>AR Collect</Text>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <View style={styles.safeContent}>
+        {/* Close Button - Top Right or Bottom Center based on completion */}
         {onClose && (
-          <TouchableOpacity accessibilityRole="button" onPress={onClose}>
-            <Text style={styles.close}>Close</Text>
+          <TouchableOpacity
+            style={
+              allCoinsCollected
+                ? styles.closeButtonCompleted
+                : styles.closeButton
+            }
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel={
+              allCoinsCollected
+                ? "Event Complete - Close AR"
+                : "Close AR camera"
+            }
+          >
+            <Text
+              style={
+                allCoinsCollected
+                  ? styles.closeButtonCompletedText
+                  : styles.closeButtonText
+              }
+            >
+              {allCoinsCollected ? "🎉 Event Complete - Tap to Exit" : "✕"}
+            </Text>
           </TouchableOpacity>
         )}
-      </View>
-      <View style={styles.body}>
-        {content}
 
-        {collectedBanner && (
-          <View style={styles.collectedBanner}>
-            <Text style={styles.collectedText}>Coin collected!</Text>
-          </View>
-        )}
+        <View style={styles.body}>
+          {content}
 
-        {/* GPS Warning Overlay */}
-        {currentLocation &&
-          currentLocation.accuracy &&
-          currentLocation.accuracy > 500 && (
-            <View style={styles.gpsWarning}>
-              <Text style={styles.gpsWarningTitle}>
-                ⚠️ Using Default Location
+          {collectedBanner.visible && (
+            <View style={styles.collectedBanner}>
+              <Text style={styles.collectedTitle}>🎉 TREASURE COLLECTED!</Text>
+              <Text style={styles.collectedText}>
+                {collectedBanner.coinName}
               </Text>
-              <Text style={styles.gpsWarningText}>
-                GPS failed to get your real location. AR coins will be placed
-                around Paris, France as a fallback.
+              <Text style={styles.collectedScore}>
+                +{collectedBanner.value} points added to score!
               </Text>
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={() => {
-                  setCurrentLocation(null);
-                  // This will trigger GPS initialization again
-                }}
-              >
-                <Text style={styles.retryButtonText}>🔄 Retry GPS</Text>
-              </TouchableOpacity>
+              <Text style={styles.collectedRemaining}>
+                {collectedBanner.remainingCoins} treasures remaining
+              </Text>
             </View>
           )}
 
-        {/* Place Object Button */}
-        <TouchableOpacity
-          style={styles.placeButton}
-          onPress={() => setShowPlaceDialog(true)}
-          accessibilityLabel="Place object at custom distance"
-        >
-          <Text style={styles.placeButtonText}>📍 Place Object</Text>
-        </TouchableOpacity>
-
-        {/* Create Random Coins Button - only show if we have an event */}
-        {effectiveEventId && (
-          <TouchableOpacity
-            style={[styles.placeButton, styles.createCoinsButton]}
-            onPress={createRandomCoins}
-            accessibilityLabel="Create 6 random test coins for this event"
-          >
-            <Text style={styles.placeButtonText}>🪙 Create Test Coins</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Coin Count Button - only show if we have an event */}
-        {effectiveEventId && (
-          <TouchableOpacity
-            style={[styles.placeButton, styles.coinCountButton]}
-            onPress={getCoinCount}
-            accessibilityLabel="Show coin count for this event"
-          >
-            <Text style={styles.placeButtonText}>📊 Coin Count</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Remove Coins Button - only show if we have an event */}
-        {effectiveEventId && (
-          <TouchableOpacity
-            style={[styles.placeButton, styles.removeCoinsButton]}
-            onPress={removeAllCoins}
-            accessibilityLabel="Remove all coins from this event"
-          >
-            <Text style={styles.placeButtonText}>🗑️ Remove Coins</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Session Status Indicator */}
-        <View style={styles.sessionIndicator}>
-          <Text style={styles.sessionText}>
-            📍 GPS:{" "}
-            {currentLocation
-              ? currentLocation.accuracy && currentLocation.accuracy > 500
-                ? "🟡 Default Location"
-                : "🟢 Active"
-              : "🔴 Searching..."}
-          </Text>
-          {eventId && (
-            <Text style={styles.sessionText}>
-              🎯 Hunt: {sessionActive ? "🟢 Active" : "🔴 Starting..."}
-            </Text>
+          {/* Buttons temporarily hidden for cleaner UI */}
+          {/* Place Object Button */}
+          {false && (
+            <TouchableOpacity
+              style={styles.placeButton}
+              onPress={() => setShowPlaceDialog(true)}
+              accessibilityLabel="Place object at custom distance"
+            >
+              <Text style={styles.placeButtonText}>📍 Place Object</Text>
+            </TouchableOpacity>
           )}
-          {currentLocation && currentLocation.accuracy && (
-            <Text style={styles.sessionText}>
-              📡 Accuracy: ±{Math.round(currentLocation.accuracy)}m
-            </Text>
+
+          {/* Create Random Coins Button - only show if we have an event */}
+          {false && effectiveEventId && (
+            <TouchableOpacity
+              style={[styles.placeButton, styles.createCoinsButton]}
+              onPress={createRandomCoins}
+              accessibilityLabel="Create 6 random test coins for this event"
+            >
+              <Text style={styles.placeButtonText}>🪙 Create Test Coins</Text>
+            </TouchableOpacity>
           )}
-        </View>
 
-        {/* Refresh Button Overlay */}
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={() => {
-            // Reset current location to trigger GPS re-initialization
-            setCurrentLocation(null);
-            // Reset session active state
-            setSessionActive(false);
-            // Reset map reference to get fresh GPS fix
-            setMapReference(null);
-            // Clear any existing event coins to force reload
-            setEventCoins([]);
-            console.log(
-              "[AR] Manual refresh triggered - reloading GPS and coins"
-            );
-          }}
-          accessibilityLabel="Refresh GPS location and reload coins"
-        >
-          <Text style={styles.refreshButtonText}>🔄</Text>
-        </TouchableOpacity>
+          {/* Coin Count Button - only show if we have an event */}
+          {false && effectiveEventId && (
+            <TouchableOpacity
+              style={[styles.placeButton, styles.coinCountButton]}
+              onPress={getCoinCount}
+              accessibilityLabel="Show coin count for this event"
+            >
+              <Text style={styles.placeButtonText}>📊 Coin Count</Text>
+            </TouchableOpacity>
+          )}
 
-        {/* Place Object Dialog */}
-        {showPlaceDialog && (
-          <View style={styles.dialogOverlay}>
-            <View style={styles.dialog}>
-              <Text style={styles.dialogTitle}>Place Object</Text>
-              <Text style={styles.dialogLabel}>Distance (meters):</Text>
-              <TextInput
-                style={styles.dialogInput}
-                value={placeDistance}
-                onChangeText={setPlaceDistance}
-                keyboardType="numeric"
-                placeholder="2"
-                placeholderTextColor="#999"
-              />
-              <View style={styles.dialogButtons}>
-                <TouchableOpacity
-                  style={[styles.dialogButton, styles.cancelButton]}
-                  onPress={() => setShowPlaceDialog(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.dialogButton, styles.confirmButton]}
-                  onPress={placeObjectAtDistance}
-                >
-                  <Text style={styles.confirmButtonText}>Place</Text>
-                </TouchableOpacity>
+          {/* Remove Coins Button - only show if we have an event */}
+          {false && effectiveEventId && (
+            <TouchableOpacity
+              style={[styles.placeButton, styles.removeCoinsButton]}
+              onPress={removeAllCoins}
+              accessibilityLabel="Remove all coins from this event"
+            >
+              <Text style={styles.placeButtonText}>🗑️ Remove Coins</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Enhanced AR Status HUD with integrated proximity detection */}
+          <View style={styles.arHud}>
+            {/* Top Status Bar with Score */}
+            <View style={styles.statusBar}>
+              <Text style={styles.statusLine}>
+                � Score: 0 • �📍 GPS: {currentLocation ? "🟢" : "🔴"} • 🎯 Hunt:{" "}
+                {sessionActive ? "🟢" : "🔴"} • Event:{" "}
+                {effectiveEventId ? effectiveEventId.slice(-6) : "None"}
+              </Text>
+            </View>
+
+            {/* GPS & Proximity Combined Info */}
+            <View style={styles.infoBar}>
+              <Text style={styles.infoText}>
+                📡 GPS: ±
+                {currentLocation?.accuracy
+                  ? Math.round(currentLocation.accuracy)
+                  : "?"}
+                m
+                {currentLocation?.accuracy
+                  ? currentLocation.accuracy > 20
+                    ? " 🔄 Improving..."
+                    : currentLocation.accuracy > 10
+                    ? " 🟡 Good"
+                    : " 🟢 Excellent"
+                  : " 🔍 Searching..."}
+                {" • "}
+                🎯 Range: {GPS_PROXIMITY_THRESHOLD}m • 📍 Detecting:{" "}
+                {nearbyCoins.length}/{eventCoins.length}
+              </Text>
+            </View>
+
+            {/* Hunt Status & Coin Info */}
+            <View style={styles.huntInfo}>
+              {nearbyCoins.length > 0 ? (
+                <View>
+                  <Text style={styles.huntTitle}>
+                    🎯 {nearbyCoins.length} Treasure
+                    {nearbyCoins.length > 1 ? "s" : ""} in Range!
+                  </Text>
+                  {currentLocation &&
+                    nearbyCoins.slice(0, 2).map((coin) => {
+                      const distance = calculateDistance(
+                        currentLocation.latitude,
+                        currentLocation.longitude,
+                        coin.location?.latitude || 0,
+                        coin.location?.longitude || 0
+                      );
+                      return (
+                        <Text key={coin.id} style={styles.coinDistance}>
+                          💎 {coin.name || "Treasure"}: {distance.toFixed(1)}m
+                          {distance <= 5
+                            ? " - GET CLOSER!"
+                            : distance <= 10
+                            ? " - Almost there!"
+                            : ""}
+                        </Text>
+                      );
+                    })}
+                  {spawnedObjects.size > 0 && (
+                    <Text style={styles.spawnedText}>
+                      ✨ {spawnedObjects.size} spawned in AR
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <View>
+                  <Text style={styles.searchingText}>
+                    🔍 Searching for treasures...
+                  </Text>
+                  <Text style={styles.helpText}>
+                    {!currentLocation
+                      ? "📍 Waiting for GPS location..."
+                      : eventCoins.length === 0
+                      ? "🗺️ No coins in this area yet"
+                      : "🚶‍♂️ Walk around to find coins!"}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Proximity Notifications */}
+          {proximityNotifications.length > 0 && (
+            <View style={styles.notificationContainer}>
+              {proximityNotifications.slice(-3).map((notification, index) => (
+                <View key={index} style={styles.notification}>
+                  <Text style={styles.notificationText}>{notification}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Refresh Button Overlay - Hidden for cleaner UI */}
+          {false && (
+            <TouchableOpacity
+              style={styles.refreshButton}
+              onPress={() => {
+                // Reset current location to trigger GPS re-initialization
+                setCurrentLocation(null);
+                // Reset session active state
+                setSessionActive(false);
+                // Reset map reference to get fresh GPS fix
+                setMapReference(null);
+                // Clear any existing event coins to force reload
+                setEventCoins([]);
+                console.log(
+                  "[AR] Manual refresh triggered - reloading GPS and coins"
+                );
+              }}
+              accessibilityLabel="Refresh GPS location and reload coins"
+            >
+              <Text style={styles.refreshButtonText}>🔄</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Place Object Dialog - temporarily hidden */}
+          {false && showPlaceDialog && (
+            <View style={styles.dialogOverlay}>
+              <View style={styles.dialog}>
+                <Text style={styles.dialogTitle}>Place Object</Text>
+                <Text style={styles.dialogLabel}>Distance (meters):</Text>
+                <TextInput
+                  style={styles.dialogInput}
+                  value={placeDistance}
+                  onChangeText={setPlaceDistance}
+                  keyboardType="numeric"
+                  placeholder="2"
+                  placeholderTextColor="#999"
+                />
+                <View style={styles.dialogButtons}>
+                  <TouchableOpacity
+                    style={[styles.dialogButton, styles.cancelButton]}
+                    onPress={() => setShowPlaceDialog(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dialogButton, styles.confirmButton]}
+                    onPress={placeObjectAtDistance}
+                  >
+                    <Text style={styles.confirmButtonText}>Place</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        )}
+          )}
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: "#000" },
+  safeContent: {
+    flex: 1,
+    position: "relative",
+  },
+  // Red Close Button - Top Right (smaller, in safe zone)
+  closeButton: {
+    position: "absolute",
+    top: 8,
+    right: 12,
+    width: 32,
+    height: 32,
+    backgroundColor: "#DC2626",
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+    zIndex: 1000,
+  },
+  closeButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  // Event completed close button - bottom center
+  closeButtonCompleted: {
+    position: "absolute",
+    bottom: 40,
+    left: "50%",
+    marginLeft: -120, // Half of width to center
+    width: 240,
+    height: 50,
+    backgroundColor: "#10B981",
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+    zIndex: 1000,
+  },
+  closeButtonCompletedText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
   header: {
     paddingTop: 48,
     paddingHorizontal: 16,
@@ -1774,14 +2416,48 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   collectedBanner: {
     position: "absolute",
-    bottom: 24,
-    alignSelf: "center",
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    bottom: 120,
+    left: 16,
+    right: 16,
+    backgroundColor: "rgba(16, 185, 129, 0.95)",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#FFD700",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
-  collectedText: { color: "#fff", fontWeight: "700" },
+  collectedTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  collectedText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  collectedScore: {
+    color: "#FFD700",
+    fontSize: 15,
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  collectedRemaining: {
+    color: "#E5E7EB",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+  },
 
   permissionWrap: {
     flex: 1,
@@ -1845,20 +2521,81 @@ const styles = StyleSheet.create({
     backgroundColor: "#EF4444", // Red color for destructive action
   },
 
-  // Session Indicator
-  sessionIndicator: {
+  // Enhanced AR HUD Styles
+  arHud: {
     position: "absolute",
-    top: 12,
+    top: 8,
     left: 12,
-    backgroundColor: "rgba(0,0,0,0.8)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    right: 52, // Make room for close button
+    backgroundColor: "rgba(0,0,0,0.85)",
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 8,
   },
-  sessionText: {
+  statusBar: {
+    marginBottom: 6,
+  },
+  statusLine: {
     color: "#fff",
     fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  infoBar: {
+    marginBottom: 8,
+    paddingVertical: 4,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+  },
+  infoText: {
+    color: "#E5E7EB",
+    fontSize: 10,
     fontWeight: "600",
+    textAlign: "center",
+  },
+  huntInfo: {
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.2)",
+  },
+  huntTitle: {
+    color: "#10B981",
+    fontSize: 14,
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  coinDistance: {
+    color: "#FCD34D",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  spawnedText: {
+    color: "#A78BFA",
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  searchingText: {
+    color: "#9CA3AF",
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  helpText: {
+    color: "#6B7280",
+    fontSize: 11,
+    fontWeight: "500",
+    textAlign: "center",
+    marginTop: 4,
   },
 
   // Dialog styles
@@ -1981,6 +2718,32 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 20,
     fontWeight: "600",
+  },
+
+  // Proximity Notification styles
+  notificationContainer: {
+    position: "absolute",
+    top: 120,
+    left: 16,
+    right: 16,
+    zIndex: 999,
+  },
+  notification: {
+    backgroundColor: "rgba(16, 185, 129, 0.95)",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  notificationText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });
 

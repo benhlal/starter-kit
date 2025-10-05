@@ -70,6 +70,10 @@ export const styles = StyleSheet.create({
     backgroundColor: "#1f3d2a",
     color: "#77e38a",
   },
+  statusCompleted: {
+    backgroundColor: "#1f3b1f",
+    color: "#4CAF50",
+  },
   statusRight: {
     marginLeft: "auto",
   },
