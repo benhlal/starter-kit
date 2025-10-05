@@ -10,7 +10,7 @@ import {
   Alert,
   Modal,
 } from "react-native";
-import ARGPSDemo from "../../components/ARGPSDemo";
+// import ARGPSDemo from "../../components/ARGPSDemo"; // Temporarily disabled
 import { CreateEventModal } from "../../components/Events/CreateEventModal";
 import { getUserPermissions } from "../../utils/userRoles";
 import {
@@ -555,7 +555,10 @@ const ProfileScreen: React.FC = () => {
               <Text style={{ fontSize: 16 }}>✕</Text>
             </TouchableOpacity>
           </View>
-          <ARGPSDemo />
+          {/* <ARGPSDemo /> */}
+          <Text style={{ color: "white", padding: 20, textAlign: "center" }}>
+            AR GPS Demo temporarily disabled
+          </Text>
         </View>
       </Modal>
 

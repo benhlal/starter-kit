@@ -5,7 +5,7 @@ import EventScreen from "../Events/EventScreen";
 import MapScreen from "../Map/MapScreen";
 import ARScreen from "../AR/ARScreen";
 import ARHuntScreen from "../AR/ARHuntScreen";
-import ARGPSDemo from "../../components/ARGPSDemo";
+// import ARGPSDemo from "../../components/ARGPSDemo"; // Temporarily disabled
 import EventDetailsScreen from "../Events/EventDetailsScreen";
 import BottomNav from "../../components/Home/BottomNav/BottomNav";
 import { styles } from "./HomeScreen.styles";
@@ -170,7 +170,8 @@ const HomeScreen: React.FC = () => {
 
             {showARGPS && (
               <View style={[styles.mapOverlay, styles.mapOverlayVisible]}>
-                <ARGPSDemo />
+                {/* <ARGPSDemo /> */}
+                <Text style={{color: 'white', padding: 20, textAlign: 'center'}}>AR GPS Demo temporarily disabled</Text>
                 <View style={styles.closeButtonContainer}>
                   <TouchableOpacity
                     onPress={() => setShowARGPS(false)}
