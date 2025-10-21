@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert,
   ToastAndroid,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Geolocation from "@react-native-community/geolocation";
@@ -456,6 +457,9 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
 
   // Event completion state
   const [allCoinsCollected, setAllCoinsCollected] = useState(false);
+  // Countdown modal state when event completes while camera is open
+  const [showEndCountdown, setShowEndCountdown] = useState(false);
+  const [endCountdown, setEndCountdown] = useState(10);
 
   const [placeDistance, setPlaceDistance] = useState("2");
   const [sessionActive, setSessionActive] = useState(false);
@@ -1136,11 +1140,49 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
             console.log("[AR] Toast not available:", error);
           }
         }
+        // If camera is open, show an in-AR countdown before closing
+        if (hasPermission) {
+          setEndCountdown(10);
+          setShowEndCountdown(true);
+        }
       } else if (!allCollected && allCoinsCollected) {
         setAllCoinsCollected(false);
       }
     }
-  }, [eventCoins, allCoinsCollected, effectiveEventId]);
+  }, [eventCoins, allCoinsCollected, effectiveEventId, hasPermission]);
+
+  // Start/stop countdown effect when showEndCountdown toggles
+  useEffect(() => {
+    if (!showEndCountdown) {
+      return;
+    }
+
+    let interval: any = null;
+    interval = setInterval(() => {
+      setEndCountdown((c) => {
+        if (c <= 1) {
+          // Finalize: close AR and hide countdown
+          try {
+            if (onClose) {
+              onClose();
+            }
+          } catch (e) {
+            console.warn("[AR] Error calling onClose:", e);
+          }
+          setShowEndCountdown(false);
+          clearInterval(interval);
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [showEndCountdown, onClose]);
 
   const getPreciseLocation = useCallback(() => {
     return new Promise<{
@@ -2148,6 +2190,42 @@ const ARScreen: React.FC<ARScreenProps> = ({ onClose, eventId }) => {
             </View>
           )}
 
+          {/* End-of-event countdown modal (in-AR) */}
+          {showEndCountdown && (
+            <Modal transparent animationType="fade" visible={showEndCountdown}>
+              <View style={styles.countdownOverlay}>
+                <View style={styles.countdownBox}>
+                  <Text style={styles.countdownTitle}>Event ending</Text>
+                  <Text style={styles.countdownText}>
+                    This event will close in {endCountdown} second
+                    {endCountdown === 1 ? "" : "s"}.
+                  </Text>
+                  <View style={styles.countdownButtons}>
+                    <TouchableOpacity
+                      style={styles.countdownCancel}
+                      onPress={() => setShowEndCountdown(false)}
+                    >
+                      <Text style={styles.countdownCancelText}>Stay in AR</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.countdownClose}
+                      onPress={() => {
+                        setShowEndCountdown(false);
+                        try {
+                          if (onClose) {
+                            onClose();
+                          }
+                        } catch (e) {}
+                      }}
+                    >
+                      <Text style={styles.countdownCloseText}>Exit Now</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          )}
+
           {/* Buttons temporarily hidden for cleaner UI */}
           {/* Place Object Button */}
           {false && (
@@ -2744,6 +2822,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
+  },
+  // Countdown modal styles
+  countdownOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  countdownBox: {
+    width: 300,
+    padding: 20,
+    borderRadius: 12,
+    backgroundColor: "#111827",
+    borderWidth: 1,
+    borderColor: "#374151",
+    alignItems: "center",
+  },
+  countdownTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  countdownText: {
+    color: "#D1D5DB",
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 14,
+  },
+  countdownButtons: {
+    flexDirection: "row",
+    width: "100%",
+    justifyContent: "space-between",
+  },
+  countdownCancel: {
+    flex: 1,
+    backgroundColor: "#111827",
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: "#4B5563",
+    alignItems: "center",
+  },
+  countdownCancelText: {
+    color: "#9CA3AF",
+    fontWeight: "700",
+  },
+  countdownClose: {
+    flex: 1,
+    backgroundColor: "#10B981",
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginLeft: 8,
+    alignItems: "center",
+  },
+  countdownCloseText: {
+    color: "#fff",
+    fontWeight: "800",
   },
 });
 

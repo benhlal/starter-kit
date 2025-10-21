@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import LinearGradient from "react-native-linear-gradient";
 
 interface BottomSheetProps {
   visible: boolean;
@@ -115,10 +116,14 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         ]}
         {...panResponder.panHandlers}
       >
-        <View style={styles.grabber} {...panResponder.panHandlers}>
+        <LinearGradient
+          colors={["#1e3a8a", "#1a1a1a"]} // Navy blue to dark gray gradient
+          style={styles.grabber}
+          {...panResponder.panHandlers}
+        >
           <View style={styles.grabberPill} />
           {title ? <Text style={styles.title}>{title}</Text> : null}
-        </View>
+        </LinearGradient>
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
@@ -161,7 +166,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     overflow: "hidden",
     elevation: 8,
-    paddingBottom: 90, // Add padding to cover nav bar (typical nav bar height ~80-90px)
+    paddingBottom: 60, // Add padding to cover nav bar (BottomNav height ~50-60px)
   },
   grabber: {
     alignItems: "center",

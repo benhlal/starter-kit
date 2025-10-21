@@ -79,6 +79,7 @@ export interface Event {
     experience: number;
     badges?: string[];
   };
+  minCoins?: number; // Minimum number of coins for the event, defined by admin
   requirements?: {
     minLevel?: number;
     items?: string[];
@@ -86,6 +87,10 @@ export interface Event {
   visibility: "public" | "private" | "friends";
   // AR Coin Hunt specific fields
   huntDetails?: {
+    coinsAvailable?: number; // Number of coins available in this hunt
+    coinsRemaining?: number; // Number of coins still available to collect
+    tokensRequired?: number; // Minimum tokens required to join
+    tokensCollected?: number; // Total tokens collected from coins
     difficulty: "Easy" | "Medium" | "Hard";
     terrain:
       | "Urban"
@@ -336,6 +341,9 @@ export interface DateRange {
   startDate: string; // ISO date string
   endDate: string; // ISO date string
 }
+
+// Backwards-compatible small enum used by some legacy filter components
+export type TimeStatus = "any" | "ongoing" | "upcoming" | "expired";
 
 export interface UiFilters {
   pickupAt?: string; // ISO

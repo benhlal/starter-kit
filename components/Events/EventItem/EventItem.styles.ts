@@ -126,6 +126,11 @@ export const styles = StyleSheet.create({
     marginTop: 3,
     fontWeight: "600",
   },
+  remainingCoins: {
+    color: "#FF4444", // Red color for remaining coins
+    fontSize: 14,
+    fontWeight: "700",
+  },
   difficulty: {
     color: "#FF6B6B",
     fontSize: 14,

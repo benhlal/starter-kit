@@ -11,7 +11,7 @@ import { Event, FocusLocation } from "../../../types";
 import { EventItem } from "../EventItem/EventItem";
 import { styles } from "./EventList.styles";
 
-interface EventListProps {
+export interface EventListProps {
   events: Event[];
   onEventPress?: (event: Event) => void;
   onEventDetails?: (eventId: string) => void;

@@ -70,7 +70,7 @@ const EventScreen: React.FC<EventScreenProps> = ({
   const [filters, setFilters] = useRecoilState(uiFiltersState);
   const [_localEvents, setLocalEvents] = useRecoilState(eventsState);
   const { events, fetchEvents } = useEvents();
-  const { fetchUserProfile } = useUserProfile();
+  const { userProfile, fetchUserProfile } = useUserProfile();
 
   // Fetch events when component mounts
   useEffect(() => {
@@ -99,30 +99,18 @@ const EventScreen: React.FC<EventScreenProps> = ({
   const loadUserData = useCallback(async () => {
     if (currentUser?.uid) {
       try {
-        const userProfile = await participationService.getUserProfile(
-          currentUser.uid
-        );
-        if (userProfile) {
-          console.log("👤 Loading user profile:", {
-            coins: userProfile.coins,
-            joinedEvents: userProfile.joinedEvents,
-          });
-          setUserCoins(userProfile.coins);
-          setUserParticipations(userProfile.joinedEvents);
-        }
+        await fetchUserProfile(currentUser.uid);
       } catch (error) {
         console.error("Error loading user data:", error);
       }
     }
-  }, [currentUser]);
+  }, [currentUser, fetchUserProfile]);
 
   useEffect(() => {
     loadUserData();
   }, [loadUserData]);
 
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  const [userCoins, setUserCoins] = useState(0);
-  const [userParticipations, setUserParticipations] = useState<string[]>([]);
   const {
     timePreset,
     customDateRange,
@@ -329,27 +317,14 @@ const EventScreen: React.FC<EventScreenProps> = ({
         // Update participant count immediately for instant feedback
         updateParticipantCount(eventId, 1);
 
-        // Update local state with actual fee paid
-        const newBalance = userCoins - result.fee;
-        setUserCoins(newBalance);
-        setUserParticipations([...userParticipations, eventId]);
-
-        // Show success message
+        // Show success message with fee information
         Alert.alert(
           "Joined Hunt Successfully!",
-          `${result.message}\nFee Paid: ${result.fee} coins\nNew Balance: ${newBalance} coins`
+          `${result.message}\nFee Paid: ${result.fee} coins`
         );
 
         // Refresh user data from server to ensure sync
-        if (currentUser?.uid) {
-          const userProfile = await participationService.getUserProfile(
-            currentUser.uid
-          );
-          if (userProfile) {
-            setUserCoins(userProfile.coins);
-            setUserParticipations(userProfile.joinedEvents);
-          }
-        }
+        await loadUserData();
 
         // Refresh events and profile to update participant count with small delay for database consistency
         setTimeout(() => {
@@ -398,29 +373,14 @@ const EventScreen: React.FC<EventScreenProps> = ({
         // Update participant count immediately for instant feedback
         updateParticipantCount(eventId, -1);
 
-        // Update local state with actual refund
-        const newBalance = userCoins + result.refund;
-        setUserCoins(newBalance);
-        setUserParticipations(
-          userParticipations.filter((id) => id !== eventId)
-        );
-
         // Show refund message
         Alert.alert(
           "Left Hunt Successfully!",
-          `${result.message}\nRefund: ${result.refund} coins\nNew Balance: ${newBalance} coins`
+          `${result.message}\nRefund: ${result.refund} coins`
         );
 
         // Refresh user data from server to ensure sync
-        if (currentUser?.uid) {
-          const userProfile = await participationService.getUserProfile(
-            currentUser.uid
-          );
-          if (userProfile) {
-            setUserCoins(userProfile.coins);
-            setUserParticipations(userProfile.joinedEvents);
-          }
-        }
+        await loadUserData();
 
         // Refresh events and profile to update participant count with small delay for database consistency
         setTimeout(() => {
@@ -510,10 +470,9 @@ const EventScreen: React.FC<EventScreenProps> = ({
     }
 
     // Apply more filters
-    // Filter by subscribed events only
     if (filters.subscribedOnly) {
       filtered = filtered.filter((event) =>
-        userParticipations.includes(event.id)
+        ((userProfile?.joinedEvents as string[]) || []).includes(event.id)
       );
     }
 
@@ -551,7 +510,7 @@ const EventScreen: React.FC<EventScreenProps> = ({
       const bTime = getTimestamp(b.startDate);
       return bTime - aTime;
     });
-  }, [events, eventStatus, filters, userParticipations]);
+  }, [events, eventStatus, filters, userProfile?.joinedEvents]);
 
   return (
     <View style={screenStyles.container}>
@@ -632,7 +591,7 @@ const EventScreen: React.FC<EventScreenProps> = ({
         onParticipate={handleParticipate}
         onRefresh={handleRefresh}
         refreshing={isRefreshing}
-        userParticipations={userParticipations}
+        userParticipations={(userProfile?.joinedEvents as string[]) || []}
         onDetails={(id) => onOpenDetails?.(id)}
       />
 
@@ -669,15 +628,17 @@ const EventScreen: React.FC<EventScreenProps> = ({
       <ParticipationModal
         visible={participationModalVisible}
         event={selectedEvent}
-        userCoins={userCoins}
+        userCoins={userProfile?.totalCoins || 0}
         userId={currentUser?.uid}
         isParticipant={(() => {
           const isParticipant = selectedEvent
-            ? userParticipations.includes(selectedEvent.id)
+            ? ((userProfile?.joinedEvents as string[]) || []).includes(
+                selectedEvent.id
+              )
             : false;
           console.log("🎯 EventScreen isParticipant calculation:", {
             selectedEventId: selectedEvent?.id,
-            userParticipations,
+            userJoinedEvents: userProfile?.joinedEvents,
             isParticipant,
           });
           return isParticipant;
@@ -716,7 +677,8 @@ const EventScreen: React.FC<EventScreenProps> = ({
         onEventCreated={(eventId) => {
           console.log("Event created with ID:", eventId);
           setCreateEventModalVisible(false);
-          // TODO: Refresh events list or navigate to new event
+          // Refresh events list to show the new event
+          fetchEvents();
         }}
       />
     </View>

@@ -126,15 +126,24 @@ const ProfileScreen: React.FC = () => {
         break;
       case "clearEvents":
         Alert.alert(
-          "Clear Events",
-          "This feature will clear all events (Admin only)",
+          "Clear All Events",
+          "This will permanently delete all events from the database. This action cannot be undone!",
           [
             { text: "Cancel", style: "cancel" },
             {
-              text: "Clear",
+              text: "Clear Events",
               style: "destructive",
-              onPress: () => {
-                Alert.alert("Events Cleared", "All events have been cleared.");
+              onPress: async () => {
+                try {
+                  await FirebaseService.clearCollection("events");
+                  Alert.alert("Success", "All events cleared successfully!");
+                } catch (error) {
+                  console.error("Clear events error:", error);
+                  Alert.alert(
+                    "Error",
+                    `Failed to clear events: ${(error as Error).message}`
+                  );
+                }
               },
             },
           ]
@@ -169,6 +178,87 @@ const ProfileScreen: React.FC = () => {
                   Alert.alert("Success", "25 new AR coin hunt events added!");
                 } catch (error) {
                   Alert.alert("Error", "Failed to populate events");
+                }
+              },
+            },
+          ]
+        );
+        break;
+      case "populateDemoData":
+        Alert.alert(
+          "Populate Demo Data",
+          "This will create comprehensive demo data with events, participants, and prize calculations based on collected tokens.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Create Demo Data",
+              onPress: async () => {
+                try {
+                  const {
+                    populateDemoData,
+                  } = require("../../utils/populateDemoData");
+                  await populateDemoData();
+                  Alert.alert("Success", "Demo data created successfully!");
+                } catch (error) {
+                  console.error("Demo data population error:", error);
+                  Alert.alert(
+                    "Error",
+                    `Failed to create demo data: ${(error as Error).message}`
+                  );
+                }
+              },
+            },
+          ]
+        );
+        break;
+      case "clearAllData":
+        Alert.alert(
+          "Clear All Data Except Users",
+          "This will permanently delete all events, coins, participations, and other data. User accounts will be preserved. This action cannot be undone!",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Clear All Data",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  Alert.alert(
+                    "Confirm Clear All Data",
+                    "Are you absolutely sure? This will delete ALL events, coins, and participations. Only user accounts will remain.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Yes, Clear Everything",
+                        style: "destructive",
+                        onPress: async () => {
+                          try {
+                            const {
+                              FirebaseService,
+                            } = require("../../services/firebase/FirebaseService");
+                            await FirebaseService.clearAllDataExceptUsers();
+                            Alert.alert(
+                              "Success",
+                              "All data cleared except user accounts!"
+                            );
+                          } catch (error) {
+                            console.error("Clear data error:", error);
+                            Alert.alert(
+                              "Error",
+                              `Failed to clear data: ${
+                                (error as Error).message
+                              }`
+                            );
+                          }
+                        },
+                      },
+                    ]
+                  );
+                } catch (error) {
+                  console.error("Clear data error:", error);
+                  Alert.alert(
+                    "Error",
+                    `Failed to clear data: ${(error as Error).message}`
+                  );
                 }
               },
             },
@@ -355,6 +445,98 @@ const ProfileScreen: React.FC = () => {
 
           <TouchableOpacity
             style={styles.settingItem}
+            onPress={() => {
+              Alert.alert(
+                "Clear All Coins",
+                "This will permanently delete all coins from the database. This action cannot be undone!",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Clear Coins",
+                    style: "destructive",
+                    onPress: async () => {
+                      try {
+                        await FirebaseService.clearCollection("coins");
+                        Alert.alert("Success", "All coins cleared successfully!");
+                      } catch (error) {
+                        console.error("Clear coins error:", error);
+                        Alert.alert(
+                          "Error",
+                          `Failed to clear coins: ${(error as Error).message}`
+                        );
+                      }
+                    },
+                  },
+                ]
+              );
+            }}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>🧹</Text>
+              </View>
+              <Text style={styles.settingText}>Clear All Coins</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              Alert.alert(
+                "Clear All Database",
+                "This will permanently delete ALL data from the database including events, coins, locations, and other collections. This action cannot be undone!",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Clear Everything",
+                    style: "destructive",
+                    onPress: async () => {
+                      try {
+                        const collections = [
+                          "events",
+                          "eventLocations",
+                          "coins",
+                          "arObjects",
+                          "achievements",
+                          "regions",
+                          "leaderboards",
+                          "participations",
+                        ];
+
+                        for (const collection of collections) {
+                          try {
+                            await FirebaseService.clearCollection(collection);
+                          } catch (error) {
+                            console.warn(`Failed to clear ${collection}:`, error);
+                          }
+                        }
+
+                        Alert.alert("Success", "All database data cleared successfully!");
+                      } catch (error) {
+                        console.error("Clear database error:", error);
+                        Alert.alert(
+                          "Error",
+                          `Failed to clear database: ${(error as Error).message}`
+                        );
+                      }
+                    },
+                  },
+                ]
+              );
+            }}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>⚠️</Text>
+              </View>
+              <Text style={styles.settingText}>Clear All Database</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
             onPress={() => handleSettingPress("manageUsers")}
           >
             <View style={styles.settingLeft}>
@@ -388,6 +570,34 @@ const ProfileScreen: React.FC = () => {
                 <Text style={styles.settingIconText}>🔧</Text>
               </View>
               <Text style={styles.settingText}>Populate Events</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => handleSettingPress("populateDemoData")}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>🎲</Text>
+              </View>
+              <Text style={styles.settingText}>Populate Demo Data</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => handleSettingPress("clearAllData")}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>💥</Text>
+              </View>
+              <Text style={styles.settingText}>
+                Clear All Data Except Users
+              </Text>
             </View>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>

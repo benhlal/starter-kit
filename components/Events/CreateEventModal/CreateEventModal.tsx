@@ -94,8 +94,8 @@ const initialFormData: EventFormData = {
   huntTerrain: "Urban",
   huntRange: 2,
   // Admin-specific initial values
-  coinCount: 20,
-  centerCoins: 5,
+  coinCount: 10,
+  centerCoins: 2,
 };
 
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
@@ -279,6 +279,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     try {
       const { latitude: centerLat, longitude: centerLon } = centerLocation;
 
+      // Small mapping from terrain -> contextual image (fallbacks)
+      const terrainImageMap: Record<string, string> = {
+        Urban: "https://example.com/images/urban_coin.png",
+        Forest: "https://example.com/images/forest_coin.png",
+        Beach: "https://example.com/images/beach_coin.png",
+        Mountain: "https://example.com/images/mountain_coin.png",
+        Desert: "https://example.com/images/desert_coin.png",
+        Park: "https://example.com/images/park_coin.png",
+        Historical: "https://example.com/images/historical_coin.png",
+      };
+
       // Calculate meters per degree for this location
       const metersPerDegLat = 111320;
       const metersPerDegLon = 111320 * Math.cos((centerLat * Math.PI) / 180);
@@ -309,6 +320,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             distance: distance.toFixed(1),
             angle: ((angle * 180) / Math.PI).toFixed(1),
           },
+          // Attach contextual image: prefer event image, fallback to terrain-specific image
+          image:
+            formData.imageUrl?.trim() ||
+            terrainImageMap[formData.huntTerrain] ||
+            undefined,
+          // Keep a reference for where the image came from
+          imageSource: formData.imageUrl ? "event" : "terrain-default",
         };
 
         coinPromises.push(FirebaseService.createCoin(coinData));
@@ -344,6 +362,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             distance: distance.toFixed(1),
             angle: ((angle * 180) / Math.PI).toFixed(1),
           },
+          image:
+            formData.imageUrl?.trim() ||
+            terrainImageMap[formData.huntTerrain] ||
+            undefined,
+          imageSource: formData.imageUrl ? "event" : "terrain-default",
         };
 
         coinPromises.push(FirebaseService.createCoin(coinData));

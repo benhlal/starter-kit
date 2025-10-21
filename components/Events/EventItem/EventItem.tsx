@@ -2,8 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, Image, TouchableOpacity, Pressable } from "react-native";
 import { Event } from "../../../types";
 import { useMapState } from "../../../state/recoil/hooks";
+import { useRecoilValue } from "recoil";
+import { coinsState } from "../../../state/recoil/atoms";
 import { styles } from "./EventItem.styles";
-import { isEventJoinable, isEventAllCoinsCollected, getEventStatusLabel } from '../../../utils/eventStatus';
+import {
+  isEventJoinable,
+  isEventAllCoinsCollected,
+  getEventStatusLabel,
+} from "../../../utils/eventStatus";
 
 interface EventItemProps {
   event: Event;
@@ -183,6 +189,52 @@ export const EventItem: React.FC<EventItemProps> = ({
   const allCoinsCollected = isEventAllCoinsCollected(event);
   const statusLabel = getEventStatusLabel(event);
 
+  // Compute available/uncollected coins for this event (if coins are loaded in state)
+  const coins = useRecoilValue(coinsState);
+  const availableCoinsCount = React.useMemo(() => {
+    try {
+      if (!coins || coins.length === 0) {
+        // Use huntDetails.coinsAvailable as the primary source for total coins in event
+        return event.huntDetails?.coinsAvailable ?? event.rewards?.coins ?? 0;
+      }
+      // Count actual uncollected coins for this event
+      const uncollectedCoins = coins.filter(
+        (c) => c.eventId === event.id && !c.collected
+      ).length;
+      // If we have actual coins, show the uncollected count, otherwise fall back to huntDetails
+      return uncollectedCoins > 0
+        ? uncollectedCoins
+        : event.huntDetails?.coinsAvailable ?? event.rewards?.coins ?? 0;
+    } catch (e) {
+      return event.huntDetails?.coinsAvailable ?? event.rewards?.coins ?? 0;
+    }
+  }, [coins, event]);
+
+  // Calculate remaining coins for ongoing events
+  const remainingCoinsCount = React.useMemo(() => {
+    if (!isOngoing) {
+      return null; // Only show for ongoing events
+    }
+
+    try {
+      if (!coins || coins.length === 0) {
+        // If no coins loaded, show total available as remaining
+        const total =
+          event.huntDetails?.coinsAvailable ?? event.rewards?.coins ?? 0;
+        return total > 0 ? total : null;
+      }
+
+      // Count actual uncollected coins for this event
+      const uncollectedCoins = coins.filter(
+        (c) => c.eventId === event.id && !c.collected
+      ).length;
+
+      return uncollectedCoins > 0 ? uncollectedCoins : 0;
+    } catch (e) {
+      return null;
+    }
+  }, [coins, event, isOngoing]);
+
   return (
     <Pressable
       onPress={() => setShowDetails(!showDetails)}
@@ -234,7 +286,13 @@ export const EventItem: React.FC<EventItemProps> = ({
         <Text style={styles.detail}>{event.balance}</Text>
       ) : event.rewards ? (
         <Text style={styles.prizePool}>
-          💰 Prize: {event.rewards.coins} coins
+          💰 Prize: {availableCoinsCount} coins
+          {remainingCoinsCount !== null && remainingCoinsCount > 0 && (
+            <Text style={styles.remainingCoins}>
+              {" | "}
+              {remainingCoinsCount} remaining
+            </Text>
+          )}
         </Text>
       ) : null}
 
@@ -293,7 +351,7 @@ export const EventItem: React.FC<EventItemProps> = ({
           </>
         ) : (
           <>
-            � Upcoming •{" "}
+            🟡 Upcoming •{" "}
             <Text style={styles.countdown}>{countdown || "Starting soon"}</Text>
           </>
         )}

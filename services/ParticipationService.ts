@@ -1,5 +1,6 @@
 import firestore from "@react-native-firebase/firestore";
 import { getAuth } from "@react-native-firebase/auth";
+import { FirebaseService } from "./firebase/FirebaseService";
 
 interface UserProfile {
   id: string;
@@ -279,6 +280,41 @@ export class ParticipationService {
       });
 
       await batch.commit();
+
+      // Check if event needs minimum coins and create them if necessary
+      const currentCoins = await FirebaseService.getCoinsForEvent(eventId);
+      const minCoins = event.minCoins || 5; // Default to 5 if not set
+      if (currentCoins.length < minCoins) {
+        const coinsToCreate = minCoins - currentCoins.length;
+        const coinPromises = [];
+        for (let i = 0; i < coinsToCreate; i++) {
+          // Create coins at random locations near the event center
+          const eventLat = event.location?.latitude || 0;
+          const eventLng = event.location?.longitude || 0;
+          const distance = Math.random() * 100 + 50; // 50-150 meters
+          const angle = Math.random() * 2 * Math.PI;
+          const metersPerDegLat = 111320;
+          const metersPerDegLon =
+            metersPerDegLat * Math.cos((eventLat * Math.PI) / 180);
+          const offsetLat = (distance * Math.cos(angle)) / metersPerDegLat;
+          const offsetLon = (distance * Math.sin(angle)) / metersPerDegLon;
+          const coinLat = eventLat + offsetLat;
+          const coinLng = eventLng + offsetLon;
+
+          const coinData = {
+            eventId,
+            location: { latitude: coinLat, longitude: coinLng },
+            value: Math.floor(Math.random() * 50) + 10, // 10-60 coins
+            collectible: true,
+            collected: false,
+            createdAt: new Date().toISOString(),
+            createdBy: userId,
+            type: "treasure",
+          };
+          coinPromises.push(FirebaseService.createCoin(coinData));
+        }
+        await Promise.all(coinPromises);
+      }
 
       const startTime = this.getEventStartTime(event);
       const isOngoing = startTime ? startTime <= Date.now() : false;

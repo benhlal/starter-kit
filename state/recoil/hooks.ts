@@ -32,14 +32,12 @@ import {
   eventStatsSelector,
 } from "./selectors";
 import { FirebaseService } from "../../services/firebase/FirebaseService";
-import { MockService } from "../../mocks/MockService";
 
 // Hook for managing events
 export const useEvents = () => {
   const [events, setEvents] = useRecoilState(eventsState);
   const [loading, setLoading] = useRecoilState(loadingState);
   const [error, setError] = useRecoilState(errorState);
-  const appConfig = useRecoilValue(appState);
   const nearbyEvents = useRecoilValue(nearbyEventsSelector);
   const joinedEvents = useRecoilValue(joinedEventsSelector);
   const eventStats = useRecoilValue(eventStatsSelector);
@@ -49,9 +47,7 @@ export const useEvents = () => {
       setLoading((prev) => ({ ...prev, events: true }));
       setError((prev) => ({ ...prev, events: null }));
 
-      const eventsData = appConfig.useMockData
-        ? await MockService.getEvents()
-        : await FirebaseService.getEvents();
+      const eventsData = await FirebaseService.getEvents();
 
       setEvents(eventsData);
     } catch (err) {
@@ -60,19 +56,13 @@ export const useEvents = () => {
     } finally {
       setLoading((prev) => ({ ...prev, events: false }));
     }
-  }, [appConfig.useMockData, setEvents, setLoading, setError]);
+  }, [setEvents, setLoading, setError]);
 
   const joinEvent = useCallback(
     async (eventId: string, userId: string) => {
       try {
-        if (appConfig.useMockData) {
-          await MockService.joinEvent(eventId, userId);
-        } else {
-          await FirebaseService.joinEvent(userId, eventId);
-          console.log(
-            `Successfully joined event ${eventId} for user ${userId}`
-          );
-        }
+        await FirebaseService.joinEvent(userId, eventId);
+        console.log(`Successfully joined event ${eventId} for user ${userId}`);
 
         // Refresh events after joining
         await fetchEvents();
@@ -84,17 +74,13 @@ export const useEvents = () => {
         throw err;
       }
     },
-    [appConfig.useMockData, fetchEvents]
+    [fetchEvents]
   );
 
   const deleteEvent = useCallback(
     async (eventId: string) => {
       try {
-        if (appConfig.useMockData) {
-          await MockService.deleteEvent(eventId);
-        } else {
-          await FirebaseService.deleteEvent(eventId);
-        }
+        await FirebaseService.deleteEvent(eventId);
 
         await fetchEvents();
       } catch (err) {
@@ -102,7 +88,7 @@ export const useEvents = () => {
         throw err;
       }
     },
-    [appConfig.useMockData, fetchEvents]
+    [fetchEvents]
   );
 
   return {
@@ -123,7 +109,6 @@ export const useUserProfile = () => {
   const [userProfile, setUserProfile] = useRecoilState(userProfileState);
   const [loading, setLoading] = useRecoilState(loadingState);
   const [error, setError] = useRecoilState(errorState);
-  const appConfig = useRecoilValue(appState);
   const userLevel = useRecoilValue(userLevelSelector);
 
   const fetchUserProfile = useCallback(
@@ -132,9 +117,7 @@ export const useUserProfile = () => {
         setLoading((prev) => ({ ...prev, profile: true }));
         setError((prev) => ({ ...prev, profile: null }));
 
-        const profileData = appConfig.useMockData
-          ? await MockService.getUserProfile(userId)
-          : await FirebaseService.getUserProfile(userId);
+        const profileData = await FirebaseService.getUserProfile(userId);
 
         if (profileData) {
           setUserProfile(profileData as any);
@@ -146,15 +129,16 @@ export const useUserProfile = () => {
         setLoading((prev) => ({ ...prev, profile: false }));
       }
     },
-    [appConfig.useMockData, setUserProfile, setLoading, setError]
+    [setUserProfile, setLoading, setError]
   );
 
   const updateUserProfile = useCallback(
     async (userId: string, updates: any) => {
       try {
-        const updatedProfile = appConfig.useMockData
-          ? await MockService.updateUserProfile(userId, updates)
-          : await FirebaseService.updateUserProfile(userId, updates);
+        const updatedProfile = await FirebaseService.updateUserProfile(
+          userId,
+          updates
+        );
 
         setUserProfile((prev) => ({ ...(prev as any), ...updates }));
         return updatedProfile;
@@ -163,7 +147,7 @@ export const useUserProfile = () => {
         throw err;
       }
     },
-    [appConfig.useMockData, setUserProfile]
+    [setUserProfile]
   );
 
   return {
@@ -181,7 +165,6 @@ export const useCoins = () => {
   const [coins, setCoins] = useRecoilState(coinsState);
   const [loading, setLoading] = useRecoilState(loadingState);
   const [error, setError] = useRecoilState(errorState);
-  const appConfig = useRecoilValue(appState);
   const collectedCoinsCount = useRecoilValue(collectedCoinsSelector);
 
   const fetchCoins = useCallback(async () => {
@@ -189,9 +172,7 @@ export const useCoins = () => {
       setLoading((prev) => ({ ...prev, coins: true }));
       setError((prev) => ({ ...prev, coins: null }));
 
-      const coinsData = appConfig.useMockData
-        ? await MockService.getCoins()
-        : await FirebaseService.getCoins();
+      const coinsData = await FirebaseService.getCoins();
 
       setCoins(coinsData);
     } catch (err) {
@@ -200,16 +181,12 @@ export const useCoins = () => {
     } finally {
       setLoading((prev) => ({ ...prev, coins: false }));
     }
-  }, [appConfig.useMockData, setCoins, setLoading, setError]);
+  }, [setCoins, setLoading, setError]);
 
   const collectCoin = useCallback(
     async (coinId: string, userId: string) => {
       try {
-        if (appConfig.useMockData) {
-          await MockService.collectCoin(coinId, userId);
-        } else {
-          await FirebaseService.collectCoin(coinId, userId);
-        }
+        await FirebaseService.collectCoin(coinId, userId);
 
         // Update local state
         setCoins((prev) =>
@@ -231,24 +208,19 @@ export const useCoins = () => {
         throw err;
       }
     },
-    [appConfig.useMockData, setCoins]
+    [setCoins]
   );
 
-  const getCoinsByRegion = useCallback(
-    async (region: string) => {
-      try {
-        const coinsData = appConfig.useMockData
-          ? await MockService.getCoinsByRegion(region)
-          : await FirebaseService.getCoinsByRegion(region);
+  const getCoinsByRegion = useCallback(async (region: string) => {
+    try {
+      const coinsData = await FirebaseService.getCoinsByRegion(region);
 
-        return coinsData;
-      } catch (err) {
-        console.error("Error fetching coins by region:", err);
-        throw err;
-      }
-    },
-    [appConfig.useMockData]
-  );
+      return coinsData;
+    } catch (err) {
+      console.error("Error fetching coins by region:", err);
+      throw err;
+    }
+  }, []);
 
   const clearCoins = useCallback(() => {
     setCoins([]);
@@ -272,16 +244,13 @@ export const useEventLocations = () => {
     useRecoilState(eventLocationsState);
   const [loading, setLoading] = useRecoilState(loadingState);
   const [error, setError] = useRecoilState(errorState);
-  const appConfig = useRecoilValue(appState);
 
   const fetchEventLocations = useCallback(async () => {
     try {
       setLoading((prev) => ({ ...prev, eventLocations: true }));
       setError((prev) => ({ ...prev, eventLocations: null }));
 
-      const locationsData = appConfig.useMockData
-        ? await MockService.getEventLocations()
-        : await FirebaseService.getEventLocations();
+      const locationsData = await FirebaseService.getEventLocations();
 
       setEventLocations(locationsData);
     } catch (err) {
@@ -290,7 +259,7 @@ export const useEventLocations = () => {
     } finally {
       setLoading((prev) => ({ ...prev, eventLocations: false }));
     }
-  }, [appConfig.useMockData, setEventLocations, setLoading, setError]);
+  }, [setEventLocations, setLoading, setError]);
 
   return {
     eventLocations,
@@ -313,7 +282,7 @@ export const useAppState = () => {
   const setOfflineMode = useCallback(
     (offline: boolean) => {
       setAppConfig((prev) => ({ ...prev, isOffline: offline }));
-      MockService.setOfflineMode(offline);
+      // Mock service removed - offline mode only affects UI state
     },
     [setAppConfig]
   );

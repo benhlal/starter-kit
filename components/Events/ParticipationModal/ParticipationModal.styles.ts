@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
   container: {
     padding: 0,
-    paddingBottom: 20,
+    paddingBottom: 0,
   },
 
   // Event Details
@@ -41,7 +41,7 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
   prizeAmount: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "700",
     color: "#FFD700",
     marginBottom: 4,
@@ -50,6 +50,14 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: "#10B981",
     fontWeight: "600",
+  },
+
+  // Coin stats for AR collection section
+  coinStat: {
+    fontSize: 16,
+    color: "#EDEDED",
+    fontWeight: "500",
+    marginBottom: 6,
   },
 
   // Participation Section

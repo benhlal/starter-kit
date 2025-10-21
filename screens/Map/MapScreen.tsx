@@ -20,13 +20,15 @@ import MapView, {
   Polyline,
 } from "react-native-maps";
 import { FirebaseService } from "../../services/firebase/FirebaseService";
-import { Coin } from "../../types";
+import { Coin, Event } from "../../types";
 import {
   useEventLocations,
   useMapState,
   useUserProfile,
 } from "../../state/recoil/hooks";
-import { useRecoilState } from "recoil";
+import EventDetailsScreen from "../Events/EventDetailsScreen";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { coinsState } from "../../state/recoil/atoms";
 import {
   mapCenterOnUserState,
   mapSelectLocationModeState,
@@ -208,6 +210,7 @@ const MapScreen: React.FC<{
   const { selectedEvent } = useMapState();
   const { userProfile } = useUserProfile();
   const { setSelectedCoinId } = useSelectedCoin();
+  const coins = useRecoilValue(coinsState);
   const [centerOnUser, setCenterOnUser] = useRecoilState(mapCenterOnUserState);
   const [selectMode, setSelectMode] = useRecoilState(
     mapSelectLocationModeState
@@ -221,9 +224,11 @@ const MapScreen: React.FC<{
       ? (userProfile as any).joinedEvents
       : [];
     const inProfile = joined.includes(selectedEvent?.id || "");
-    const inEvent = Array.isArray((selectedEvent as any)?.participants)
-      ? (selectedEvent as any).participants.includes(currentUserId)
-      : false;
+    const inEvent =
+      Array.isArray((selectedEvent as any)?.participants) &&
+      typeof currentUserId === "string"
+        ? (selectedEvent as any).participants.includes(currentUserId)
+        : false;
     return inProfile || inEvent;
   })();
 
@@ -237,11 +242,11 @@ const MapScreen: React.FC<{
           isParticipant &&
           selectedEvent.id
         ) {
-          const coins = await FirebaseService.getCoinsForEvent(
+          const fetchedCoins = await FirebaseService.getCoinsForEvent(
             selectedEvent.id
           );
           if (!unsubscribed) {
-            setEventCoins(coins);
+            setEventCoins(fetchedCoins);
           }
         } else {
           setEventCoins([]);
@@ -417,6 +422,129 @@ const MapScreen: React.FC<{
     );
   };
 
+  // Load event info for the selected marker when it is an event location
+  const [selectedEventInfo, setSelectedEventInfo] = useState<Event | null>(
+    null
+  );
+  const [showEventDetailsModal, setShowEventDetailsModal] = useState(false);
+  const [selectedEventIsSynthetic, setSelectedEventIsSynthetic] =
+    useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadEventForMarker = async () => {
+      if (!selectedMarker) {
+        setSelectedEventInfo(null);
+        return;
+      }
+
+      const loc = eventLocations.find((l) => l.id === selectedMarker);
+      if (!loc) {
+        setSelectedEventInfo(null);
+        return;
+      }
+
+      const eventId = (loc as any).eventId as string | undefined;
+      if (!eventId) {
+        // No linked event; create a synthetic event object from location data so overlay can display
+        const coord = (loc as any).coordinate || (loc as any).location;
+        const synthetic: any = {
+          id: `loc-${loc.id}`,
+          name: (loc as any).title || (loc as any).name || "Event",
+          title: (loc as any).title || (loc as any).name || "Event",
+          description: (loc as any).description || "",
+          type: "community-event",
+          status: "upcoming",
+          location: coord || { latitude: 0, longitude: 0 },
+          coordinate: coord || undefined,
+          startDate: (loc as any).startDate || new Date().toISOString(),
+          endDate: (loc as any).endDate || new Date().toISOString(),
+          currentParticipants: 0,
+          participants: [],
+          organizer: { id: "", name: "" },
+          tags: [],
+          rewards: { coins: 0, experience: 0 },
+          visibility: "public",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        if (!cancelled) {
+          setSelectedEventInfo(synthetic as Event);
+          setSelectedEventIsSynthetic(true);
+        }
+        return;
+      }
+
+      try {
+        const ev = await FirebaseService.getEventById(eventId);
+        if (!cancelled) {
+          if (ev) {
+            setSelectedEventInfo(ev as Event);
+            setSelectedEventIsSynthetic(false);
+          } else {
+            // Event not found - fallback to synthetic from location
+            const coord = (loc as any).coordinate || (loc as any).location;
+            const synthetic: any = {
+              id: `loc-${loc.id}`,
+              name: (loc as any).title || (loc as any).name || "Event",
+              title: (loc as any).title || (loc as any).name || "Event",
+              description: (loc as any).description || "",
+              type: "community-event",
+              status: "upcoming",
+              location: coord || { latitude: 0, longitude: 0 },
+              coordinate: coord || undefined,
+              startDate: (loc as any).startDate || new Date().toISOString(),
+              endDate: (loc as any).endDate || new Date().toISOString(),
+              currentParticipants: 0,
+              participants: [],
+              organizer: { id: "", name: "" },
+              tags: [],
+              rewards: { coins: 0, experience: 0 },
+              visibility: "public",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            setSelectedEventInfo(synthetic as Event);
+            setSelectedEventIsSynthetic(true);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch event for marker", err);
+        if (!cancelled) {
+          // Fallback synthetic
+          const coord = (loc as any).coordinate || (loc as any).location;
+          const synthetic: any = {
+            id: `loc-${loc.id}`,
+            name: (loc as any).title || (loc as any).name || "Event",
+            title: (loc as any).title || (loc as any).name || "Event",
+            description: (loc as any).description || "",
+            type: "community-event",
+            status: "upcoming",
+            location: coord || { latitude: 0, longitude: 0 },
+            coordinate: coord || undefined,
+            startDate: (loc as any).startDate || new Date().toISOString(),
+            endDate: (loc as any).endDate || new Date().toISOString(),
+            currentParticipants: 0,
+            participants: [],
+            organizer: { id: "", name: "" },
+            tags: [],
+            rewards: { coins: 0, experience: 0 },
+            visibility: "public",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          setSelectedEventInfo(synthetic as Event);
+          setSelectedEventIsSynthetic(true);
+        }
+      }
+    };
+
+    loadEventForMarker();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedMarker, eventLocations]);
+
   // Dismiss info panel when tapping outside markers
   const handleMapPress = (_evt: MapPressEvent) => {
     if (selectMode) {
@@ -589,87 +717,116 @@ const MapScreen: React.FC<{
         ) : null}
 
         {/* Event location markers */}
-        {eventLocations.map((location: EventLocation) => (
-          <Marker
-            key={location.id}
-            coordinate={location.coordinate ?? location.location}
-            onPress={() =>
-              handleMarkerPress(
-                location.id,
-                location.coordinate ?? location.location
-              )
-            }
-          >
-            <View
-              style={[
-                location.title === "Total Prize"
-                  ? styles.prizeBubble
-                  : styles.markerContainer,
-                selectedMarker === location.id &&
-                  (location.title === "Total Prize"
-                    ? styles.selectedPrizeBubble
-                    : styles.selectedMarker),
-              ]}
-            >
-              <Text
-                style={
-                  location.title === "Total Prize"
-                    ? styles.prizeText
-                    : styles.coinText
-                }
-              >
-                💰{location.coins}
-              </Text>
-              <Text
-                style={
-                  location.title === "Total Prize"
-                    ? styles.prizeTitleText
-                    : styles.markerTitle
-                }
-              >
-                {location.title}
-              </Text>
-              {location.title === "Total Prize" && (
-                <View style={styles.bubbleTail} />
-              )}
-            </View>
-          </Marker>
-        ))}
+        {eventLocations.map((location: EventLocation) => {
+          // Try to determine linked event id for this location
+          const linkedEventId = (location as any).eventId as string | undefined;
+          const availableFromGlobal = linkedEventId
+            ? coins.filter(
+                (c: any) => c.eventId === linkedEventId && !c.collected
+              ).length
+            : 0;
+          const prizeDisplay =
+            availableFromGlobal || (location as any).coins || 0;
 
-        {/* Event coin markers (from Firestore) - show all event coins */}
-        {eventCoins.map((coin) => (
-          <Marker
-            key={coin.id}
-            coordinate={{
-              latitude: coin.location.latitude,
-              longitude: coin.location.longitude,
-            }}
-            onPress={() => {
-              setSelectedCoinId(coin.id);
-              handleMarkerPress(coin.id, {
+          return (
+            <Marker
+              key={location.id}
+              coordinate={location.coordinate ?? location.location}
+              onPress={() =>
+                handleMarkerPress(
+                  location.id,
+                  location.coordinate ?? location.location
+                )
+              }
+            >
+              <View
+                style={[
+                  location.title === "Total Prize"
+                    ? styles.prizeBubble
+                    : styles.markerContainer,
+                  selectedMarker === location.id &&
+                    (location.title === "Total Prize"
+                      ? styles.selectedPrizeBubble
+                      : styles.selectedMarker),
+                ]}
+              >
+                <Text
+                  style={
+                    location.title === "Total Prize"
+                      ? styles.prizeText
+                      : styles.coinText
+                  }
+                >
+                  💰{prizeDisplay}
+                </Text>
+                <Text
+                  style={
+                    location.title === "Total Prize"
+                      ? styles.prizeTitleText
+                      : styles.markerTitle
+                  }
+                >
+                  {location.title}
+                </Text>
+                {location.title === "Total Prize" && (
+                  <View style={styles.bubbleTail} />
+                )}
+              </View>
+            </Marker>
+          );
+        })}
+
+        {/* Event coin markers (from Firestore) - only show when the user
+            is a participant of the selected event and the event is active */}
+        {selectedEvent &&
+          selectedEvent.status === "active" &&
+          (Array.isArray((userProfile as any)?.joinedEvents)
+            ? (userProfile as any).joinedEvents.includes(selectedEvent.id)
+            : Array.isArray(selectedEvent.participants) &&
+              typeof currentUserId === "string"
+            ? selectedEvent.participants.includes(currentUserId)
+            : false) &&
+          eventCoins.map((coin) => (
+            <Marker
+              key={coin.id}
+              coordinate={{
                 latitude: coin.location.latitude,
                 longitude: coin.location.longitude,
-              });
-            }}
-          >
-            <View
-              style={[
-                styles.coinMarker,
-                coin.collected && styles.coinMarkerCollected,
-                !coin.collectible && styles.coinMarkerUnavailable,
-              ]}
+              }}
+              onPress={() => {
+                setSelectedCoinId(coin.id);
+                handleMarkerPress(coin.id, {
+                  latitude: coin.location.latitude,
+                  longitude: coin.location.longitude,
+                });
+              }}
             >
-              <Text style={styles.randomCoinText}>
-                {coin.collected ? "✅" : coin.collectible ? "🪙" : "🔒"}
-              </Text>
-            </View>
-          </Marker>
-        ))}
+              <View
+                style={[
+                  styles.coinMarker,
+                  coin.collected && styles.coinMarkerCollected,
+                  !coin.collectible && styles.coinMarkerUnavailable,
+                ]}
+              >
+                <Text style={styles.randomCoinText}>
+                  {coin.collected ? "✅" : coin.collectible ? "🪙" : "🔒"}
+                </Text>
+              </View>
+            </Marker>
+          ))}
 
-        {/* Show coins from all events for reference (lighter style) */}
+        {/* Show coins from events the user has joined (lighter style) */}
         {!selectedEvent &&
           eventLocations
-            .filter((loc: EventLocation) => (loc as any).coins > 0)
+            .filter((loc: EventLocation) => {
+              const coinsCount = (loc as any).coins || 0;
+              const joined = Array.isArray((userProfile as any)?.joinedEvents)
+                ? (userProfile as any).joinedEvents
+                : [];
+              const eventId = (loc as any).eventId as string | undefined;
+              // Only show event center coin badge if the user has joined the linked event
+              return coinsCount > 0 && eventId && joined.includes(eventId);
+            })
             .map((eventLoc: EventLocation) => (
               <Marker
                 key={`event-center-${eventLoc.id}`}
@@ -733,6 +890,35 @@ const MapScreen: React.FC<{
           </Marker>
         ) : null}
       </MapView>
+
+      {/* Small overlay for selected event info */}
+      {selectedEventInfo && (
+        <View style={styles.eventOverlay}>
+          <View style={styles.eventOverlayContent}>
+            <Text style={styles.eventOverlayTitle}>
+              {selectedEventInfo.name || selectedEventInfo.title}
+            </Text>
+            <Text style={styles.eventOverlayTime}>
+              {new Date(selectedEventInfo.startDate).toLocaleString()} -{" "}
+              {new Date(selectedEventInfo.endDate).toLocaleString()}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.eventOverlayButton}
+            onPress={() => setShowEventDetailsModal(true)}
+          >
+            <Text style={styles.eventOverlayButtonText}>Details</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Event Details Modal */}
+      {selectedEventInfo && showEventDetailsModal && (
+        <EventDetailsScreen
+          eventId={selectedEventInfo.id}
+          onClose={() => setShowEventDetailsModal(false)}
+        />
+      )}
 
       {/* Zoom Controls - keep above info panel */}
       <View style={styles.zoomControls} pointerEvents="box-none">
@@ -810,10 +996,25 @@ const MapScreen: React.FC<{
                     const radius = selected.radius;
                     const interaction = selected.interactionType;
                     const rewards = selected.rewards;
-                    const eventCoinsCount = eventCoins.filter(
-                      (coin) => !coin.collected && coin.collectible
-                    ).length;
-                    const totalEventCoins = eventCoins.length;
+                    // Prefer local eventCoins (loaded when participant), otherwise use global coins
+                    const linkedId = (selected as any).eventId as
+                      | string
+                      | undefined;
+                    const globalCoinsForEvent = linkedId
+                      ? coins.filter((c: any) => c.eventId === linkedId)
+                      : [];
+                    const totalEventCoins =
+                      eventCoins && eventCoins.length > 0
+                        ? eventCoins.length
+                        : globalCoinsForEvent.length;
+                    const eventCoinsCount =
+                      eventCoins && eventCoins.length > 0
+                        ? eventCoins.filter(
+                            (coin) => !coin.collected && coin.collectible
+                          ).length
+                        : globalCoinsForEvent.filter(
+                            (coin: any) => !coin.collected && coin.collectible
+                          ).length;
                     const participantCount = Array.isArray(
                       (selected as any).participants
                     )
@@ -856,11 +1057,16 @@ const MapScreen: React.FC<{
                         {/* Coins Information */}
                         <View style={styles.infoSection}>
                           <Text style={styles.infoSectionTitle}>🪙 Coins</Text>
-                          {typeof (selected as any).coins !== "undefined" && (
+                          {totalEventCoins > 0 ? (
+                            <Text style={styles.infoCoins}>
+                              Total Coins: 💰{totalEventCoins} • Available:{" "}
+                              {eventCoinsCount}
+                            </Text>
+                          ) : typeof (selected as any).coins !== "undefined" ? (
                             <Text style={styles.infoCoins}>
                               Total Coins: 💰{(selected as any).coins}
                             </Text>
-                          )}
+                          ) : null}
                           {totalEventCoins > 0 && (
                             <>
                               <Text style={styles.infoMeta}>
@@ -1086,6 +1292,7 @@ const MapScreen: React.FC<{
                 tags: ["ongoing", "treasure-hunt", "map-created"],
                 visibility: "public" as const,
                 coins: 150,
+                minCoins: 5, // Minimum coins for the event
                 radius: 1000,
                 interactionType: "tap",
                 rewards: { coins: 75, experience: 40 },
@@ -1213,10 +1420,10 @@ const MapScreen: React.FC<{
                 value: 10,
               });
               // Refresh coins after creation
-              const coins = await FirebaseService.getCoinsForEvent(
+              const refreshedCoins = await FirebaseService.getCoinsForEvent(
                 selectedEvent.id!
               );
-              setEventCoins(coins);
+              setEventCoins(refreshedCoins);
               setSelectedMarker(id);
               setRingCenter({
                 latitude: userLocation.latitude,
@@ -1634,6 +1841,44 @@ const styles = StyleSheet.create({
     color: "#bbb",
     fontSize: 12,
     marginTop: 4,
+  },
+  // Selected event overlay
+  eventOverlay: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: 140,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1e1e1e",
+    padding: 10,
+    borderRadius: 12,
+    elevation: 8,
+    zIndex: 30,
+  },
+  eventOverlayContent: {
+    flex: 1,
+  },
+  eventOverlayTitle: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  eventOverlayTime: {
+    color: "#bbb",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  eventOverlayButton: {
+    marginLeft: 10,
+    backgroundColor: "#7B3FE4",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  eventOverlayButtonText: {
+    color: "#fff",
+    fontWeight: "700",
   },
   // Floating button
   floatingButton: {

@@ -8,6 +8,8 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
+import { useRecoilValue } from "recoil";
+import { coinsState } from "../../state/recoil/atoms";
 import { FirebaseService } from "../../services/firebase/FirebaseService";
 import { useEvents, useUserProfile } from "../../state/recoil/hooks";
 import { isAdmin } from "../../utils/userRoles";
@@ -16,7 +18,7 @@ import { participationService } from "../../services/ParticipationService";
 import {
   isEventJoinable,
   isEventAllCoinsCollected,
-  getEventStatusLabel,
+  // getEventStatusLabel, // unused
 } from "../../utils/eventStatus";
 
 interface EventDetailsScreenProps {
@@ -40,11 +42,11 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
   const [deletingEvent, setDeletingEvent] = useState(false);
   const { deleteEvent } = useEvents();
   const { userProfile, fetchUserProfile } = useUserProfile();
+  const globalCoins = useRecoilValue(coinsState);
 
   useEffect(() => {
     let cancelled = false;
     let coinsUnsubscribe: (() => void) | null = null;
-
     const loadEventData = async () => {
       try {
         if (!cancelled) {
@@ -93,13 +95,30 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
     };
   }, [eventId]);
 
+  // Prefer local subscribed coins when present. If not present but global has coins for this event, use those.
+  // If neither is present, set derivedCoins to undefined so joinability checks don't incorrectly block joining.
+  const globalCoinsForEvent = globalCoins.filter(
+    (c: Coin) => c.eventId === eventId
+  );
+  const derivedCoins: Coin[] | undefined =
+    coins && coins.length > 0
+      ? coins
+      : globalCoinsForEvent.length > 0
+      ? globalCoinsForEvent
+      : undefined;
+
   const stats = useMemo(() => {
-    const total = coins.length;
-    const collected = coins.filter((c) => !!c.collected).length;
-    const remaining = coins.filter((c) => c.collectible && !c.collected);
-    const remainingCount = remaining.length;
-    const totalAmountRemaining = remaining.reduce(
-      (sum, c) => sum + (c.value || 0),
+    const coinSource: Coin[] = derivedCoins ?? [];
+    const total: number = coinSource.length;
+    const collected: number = coinSource.filter(
+      (c: Coin) => !!c.collected
+    ).length;
+    const remaining: Coin[] = coinSource.filter(
+      (c: Coin) => c.collectible && !c.collected
+    );
+    const remainingCount: number = remaining.length;
+    const totalAmountRemaining: number = remaining.reduce(
+      (sum: number, c: Coin) => sum + (c.value || 0),
       0
     );
     const participantsInEvent =
@@ -116,7 +135,7 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
       participantsInEvent,
       remainingSlots,
     };
-  }, [coins, event]);
+  }, [event, derivedCoins]);
 
   // Check if user has joined this event - use fresh data
   const [isUserJoined, setIsUserJoined] = useState(false);
@@ -171,10 +190,11 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
     );
   }, [event]);
 
-  // Use shared helpers for status and joinability
-  const joinable = event ? isEventJoinable(event, coins) : false;
-  const allCoinsCollected = event ? isEventAllCoinsCollected(event, coins) : false;
-  const statusLabel = event ? getEventStatusLabel(event, coins) : '';
+  // Use shared helpers for status and joinability (use derivedCoins so missing data doesn't falsely mark events completed)
+  const joinable = event ? isEventJoinable(event, derivedCoins) : false;
+  const allCoinsCollected = event
+    ? isEventAllCoinsCollected(event, derivedCoins)
+    : false;
 
   const handleJoinEvent = async () => {
     if (!event) {
@@ -317,10 +337,58 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
   const currentUser = FirebaseService.getCurrentUser?.();
   const userIsAdmin = isAdmin(currentUser?.email || null);
 
+  // Render states: loading -> spinner; error -> retry/close; event -> details; not found -> message with close
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color="#7B3FE4" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.error}>{error}</Text>
+        <View style={styles.retryRow}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.retryButtonLeft]}
+            onPress={() => {
+              // Retry load
+              setLoading(true);
+              setError(null);
+              // Re-run the effect by calling the fetch logic directly
+              (async () => {
+                try {
+                  const ev = await FirebaseService.getEventById(eventId);
+                  const cs = await FirebaseService.getCoinsForEvent(eventId);
+                  setEvent(ev);
+                  setCoins(cs || []);
+                } catch (e: any) {
+                  setError(e?.message || "Failed to load event");
+                } finally {
+                  setLoading(false);
+                }
+              })();
+            }}
+          >
+            <Text style={styles.actionButtonText}>Retry</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.retryButtonRight]}
+            onPress={() => onClose?.()}
+          >
+            <Text style={styles.actionButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   if (!event) {
     return (
       <View style={styles.center}>
-        <Text style={styles.error}>Event not found or failed to load.</Text>
+        <Text style={styles.error}>Event not found.</Text>
       </View>
     );
   }
@@ -354,16 +422,48 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
           ) : null}
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Coins</Text>
+            <Text style={styles.cardTitle}>Entry Fee & Prize Pool</Text>
             <Text style={styles.row}>
-              Remaining: <Text style={styles.bold}>{stats.remainingCount}</Text>
+              Entry Fee:{" "}
+              <Text style={styles.bold}>
+                {event.huntDetails?.tokensRequired || 10} tokens
+              </Text>
             </Text>
             <Text style={styles.row}>
-              Collected: <Text style={styles.bold}>{stats.collected}</Text>
+              Prize Pool:{" "}
+              <Text style={styles.bold}>
+                {event.rewards?.coins || 0} tokens
+              </Text>
+            </Text>
+            {event.huntDetails?.totalPrizePool && (
+              <Text style={styles.row}>
+                Current Prize Pool:{" "}
+                <Text style={styles.bold}>
+                  {event.huntDetails.totalPrizePool} tokens
+                </Text>
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>AR Coins to Collect</Text>
+            <Text style={styles.row}>
+              Coins Available:{" "}
+              <Text style={styles.bold}>{stats.total}</Text>
             </Text>
             <Text style={styles.row}>
-              Total Remaining Value:{" "}
-              <Text style={styles.bold}>{stats.totalAmountRemaining}</Text>
+              Coins Remaining:{" "}
+              <Text style={styles.bold}>{stats.remainingCount}</Text>
+            </Text>
+            <Text style={styles.row}>
+              Coins Collected:{" "}
+              <Text style={styles.bold}>{stats.collected}</Text>
+            </Text>
+            <Text style={styles.row}>
+              Total Token Value Remaining:{" "}
+              <Text style={styles.bold}>
+                {stats.totalAmountRemaining} tokens
+              </Text>
             </Text>
           </View>
 
@@ -388,14 +488,14 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
               disabled={joiningEvent}
             >
               <Text style={styles.ctaText}>
-                {joiningEvent ? "Joining..." : "🚀 Join Event"}
+                {joiningEvent
+                  ? "Joining..."
+                  : `🚀 Join Event (${event.huntDetails?.tokensRequired || 10} tokens)`}
               </Text>
             </TouchableOpacity>
           ) : allCoinsCollected && !isUserJoined ? (
             <View style={[styles.cta, styles.completedButton]}>
-              <Text style={styles.ctaText}>
-                🎉 All coins collected!
-              </Text>
+              <Text style={styles.ctaText}>🎉 All coins collected!</Text>
             </View>
           ) : (
             <>
@@ -410,7 +510,9 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
                   style={styles.cta}
                   onPress={() => onStartHunt?.(event.id)}
                 >
-                  <Text style={styles.ctaText}>🎯 Start Hunting</Text>
+                  <Text style={styles.ctaText}>
+                    🎯 Start AR Hunt ({stats.remainingCount} coins remaining)
+                  </Text>
                 </TouchableOpacity>
               ) : (
                 <View style={[styles.cta, styles.waitingButton]}>
@@ -443,6 +545,69 @@ const EventDetailsScreen: React.FC<EventDetailsScreenProps> = ({
               </Text>
             </TouchableOpacity>
           )}
+
+          {/* Add More Coins Button for Organizer */}
+          {event &&
+            event.organizer?.id === currentUser?.uid &&
+            !isEventOngoing && (
+              <TouchableOpacity
+                style={[styles.cta, styles.addCoinsButton]}
+                onPress={async () => {
+                  try {
+                    const user = FirebaseService.getCurrentUser?.();
+                    if (!user?.uid) {
+                      Alert.alert("Error", "Please log in to add coins.");
+                      return;
+                    }
+                    // Add 1-3 random coins
+                    const numCoins = Math.floor(Math.random() * 3) + 1;
+                    const coinPromises = [];
+                    for (let i = 0; i < numCoins; i++) {
+                      const eventLat = event.location?.latitude || 0;
+                      const eventLng = event.location?.longitude || 0;
+                      const distance = Math.random() * 200 + 100; // 100-300 meters
+                      const angle = Math.random() * 2 * Math.PI;
+                      const metersPerDegLat = 111320;
+                      const metersPerDegLon =
+                        metersPerDegLat * Math.cos((eventLat * Math.PI) / 180);
+                      const offsetLat =
+                        (distance * Math.cos(angle)) / metersPerDegLat;
+                      const offsetLon =
+                        (distance * Math.sin(angle)) / metersPerDegLon;
+                      const coinLat = eventLat + offsetLat;
+                      const coinLng = eventLng + offsetLon;
+
+                      const coinData = {
+                        eventId: event.id,
+                        location: { latitude: coinLat, longitude: coinLng },
+                        value: Math.floor(Math.random() * 100) + 50, // 50-150 coins
+                        collectible: true,
+                        collected: false,
+                        createdAt: new Date().toISOString(),
+                        createdBy: user.uid,
+                        type: "treasure",
+                      };
+                      coinPromises.push(FirebaseService.createCoin(coinData));
+                    }
+                    await Promise.all(coinPromises);
+                    Alert.alert(
+                      "Success",
+                      `Added ${numCoins} more coins to attract participants!`
+                    );
+                    // Refresh coins
+                    const updatedCoins = await FirebaseService.getCoinsForEvent(
+                      eventId
+                    );
+                    setCoins(updatedCoins);
+                  } catch (addCoinsError) {
+                    console.error("Error adding coins:", addCoinsError);
+                    Alert.alert("Error", "Failed to add coins.");
+                  }
+                }}
+              >
+                <Text style={styles.ctaText}>💰 Add More Coins</Text>
+              </TouchableOpacity>
+            )}
         </ScrollView>
       )}
     </View>
@@ -466,6 +631,22 @@ const styles = StyleSheet.create({
   bodyContent: { padding: 16 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   error: { color: "#f66" },
+  retryRow: { flexDirection: "row", marginTop: 12 },
+  actionButton: {
+    backgroundColor: "#7B3FE4",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  retryButtonLeft: {
+    marginRight: 8,
+  },
+  retryButtonRight: {
+    backgroundColor: "#9E9E9E",
+    marginLeft: 0,
+  },
+  actionButtonText: { color: "#fff", fontWeight: "700" },
   eventName: {
     color: "#fff",
     fontSize: 20,
@@ -508,6 +689,10 @@ const styles = StyleSheet.create({
   },
   completedButton: {
     backgroundColor: "#00C851", // Green for completed
+  },
+  addCoinsButton: {
+    backgroundColor: "#FFD700", // Gold for add coins
+    marginTop: 8,
   },
 });
 

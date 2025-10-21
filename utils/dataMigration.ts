@@ -4,13 +4,13 @@
  */
 
 import { FirebaseService } from "../services/firebase/FirebaseService";
-import {
-  mockEvents,
-  mockEventLocations,
-  mockCoins,
-  mockUserProfiles,
-  mockAchievements,
-} from "../mocks/data/mockResponses";
+
+// Mock data removed - using empty arrays
+const mockEvents: any[] = [];
+const mockEventLocations: any[] = [];
+const mockCoins: any[] = [];
+const mockUserProfiles: any[] = [];
+const mockAchievements: any[] = [];
 
 // Enhanced data structure for future extensibility
 interface MigrationOptions {
@@ -92,7 +92,7 @@ class DataMigrationService {
   }
 
   private static async migrateUsers(dryRun: boolean, batchSize: number) {
-    const enhancedUsers = mockUserProfiles.map((user) => ({
+    const enhancedUsers = mockUserProfiles.map((user: any) => ({
       ...user,
       // Enhanced fields for future use
       profile: {
@@ -180,7 +180,9 @@ class DataMigrationService {
 
     for (let i = 0; i < enhancedUsers.length; i += batchSize) {
       const batch = enhancedUsers.slice(i, i + batchSize);
-      await Promise.all(batch.map((user) => FirebaseService.createUser(user)));
+      await Promise.all(
+        batch.map((user: any) => FirebaseService.createUser(user))
+      );
       console.log(
         `👥 Migrated ${i + batch.length}/${enhancedUsers.length} users`
       );
@@ -188,7 +190,7 @@ class DataMigrationService {
   }
 
   private static async migrateEvents(dryRun: boolean, batchSize: number) {
-    const enhancedEvents = mockEvents.map((event) => ({
+    const enhancedEvents = mockEvents.map((event: any) => ({
       ...event,
       // Enhanced fields for future use
       analytics: {
@@ -256,7 +258,7 @@ class DataMigrationService {
     for (let i = 0; i < enhancedEvents.length; i += batchSize) {
       const batch = enhancedEvents.slice(i, i + batchSize);
       await Promise.all(
-        batch.map((event) => FirebaseService.createEvent(event))
+        batch.map((event: any) => FirebaseService.createEvent(event as any))
       );
       console.log(
         `🎯 Migrated ${i + batch.length}/${enhancedEvents.length} events`
@@ -268,7 +270,7 @@ class DataMigrationService {
     dryRun: boolean,
     batchSize: number
   ) {
-    const enhancedLocations = mockEventLocations.map((location) => ({
+    const enhancedLocations = mockEventLocations.map((location: any) => ({
       ...location,
       // Enhanced fields for future use
       accessibility: {
@@ -319,7 +321,9 @@ class DataMigrationService {
     for (let i = 0; i < enhancedLocations.length; i += batchSize) {
       const batch = enhancedLocations.slice(i, i + batchSize);
       await Promise.all(
-        batch.map((location) => FirebaseService.createEventLocation(location))
+        batch.map((location: any) =>
+          FirebaseService.createEventLocation(location)
+        )
       );
       console.log(
         `📍 Migrated ${i + batch.length}/${
@@ -330,7 +334,7 @@ class DataMigrationService {
   }
 
   private static async migrateCoins(dryRun: boolean, batchSize: number) {
-    const enhancedCoins = mockCoins.map((coin) => ({
+    const enhancedCoins = mockCoins.map((coin: any) => ({
       ...coin,
       // Enhanced fields for future use
       analytics: {
@@ -377,7 +381,9 @@ class DataMigrationService {
 
     for (let i = 0; i < enhancedCoins.length; i += batchSize) {
       const batch = enhancedCoins.slice(i, i + batchSize);
-      await Promise.all(batch.map((coin) => FirebaseService.createCoin(coin)));
+      await Promise.all(
+        batch.map((coin: any) => FirebaseService.createCoin(coin))
+      );
       console.log(
         `🪙 Migrated ${i + batch.length}/${enhancedCoins.length} coins`
       );
@@ -385,7 +391,7 @@ class DataMigrationService {
   }
 
   private static async createAchievements(dryRun: boolean, batchSize: number) {
-    const enhancedAchievements = mockAchievements.map((achievement) => ({
+    const enhancedAchievements = mockAchievements.map((achievement: any) => ({
       ...achievement,
       // Enhanced fields for future use
       category: ["events", "coins", "social", "exploration", "special"][
@@ -434,7 +440,7 @@ class DataMigrationService {
     for (let i = 0; i < enhancedAchievements.length; i += batchSize) {
       const batch = enhancedAchievements.slice(i, i + batchSize);
       await Promise.all(
-        batch.map((achievement) =>
+        batch.map((achievement: any) =>
           FirebaseService.createAchievement(achievement)
         )
       );

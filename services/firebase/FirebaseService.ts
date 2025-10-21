@@ -241,7 +241,7 @@ export class FirebaseService {
             );
             const coins = snapshot.docs.map((doc) => {
               const coinData = this.docToObject<Coin>(doc);
-              console.log(`[FIREBASE] Coin document:`, coinData);
+              console.log("[FIREBASE] Coin document:", coinData);
               return coinData;
             });
             console.log(
@@ -849,17 +849,101 @@ export class FirebaseService {
     }
   }
 
+  static async clearAllDataExceptUsers(): Promise<void> {
+    try {
+      console.log("[Firebase] Starting to clear all data except users...");
+
+      // Collections to clear (excluding users)
+      const collectionsToClear = [
+        this.EVENTS_COLLECTION,
+        this.EVENT_LOCATIONS_COLLECTION,
+        this.COINS_COLLECTION,
+        this.AR_OBJECTS_COLLECTION,
+        "achievements",
+        "regions",
+        "leaderboards",
+        "participations",
+      ];
+
+      // Clear each collection
+      for (const collectionName of collectionsToClear) {
+        try {
+          await FirebaseService.clearCollection(collectionName);
+        } catch (error) {
+          console.warn(`Failed to clear collection ${collectionName}:`, error);
+          // Continue with other collections even if one fails
+        }
+      }
+
+      // Also clear any user-specific data that might be in other collections
+      // Reset user profiles to remove joined events and collected coins
+      const usersSnapshot = await firestore()
+        .collection(this.USERS_COLLECTION)
+        .get();
+
+      if (!usersSnapshot.empty) {
+        const batch = firestore().batch();
+        usersSnapshot.docs.forEach((userDoc) => {
+          // Reset user stats but keep basic profile info
+          batch.update(userDoc.ref, {
+            totalCoins: 0,
+            level: 1,
+            eventsJoined: 0,
+            joinedEvents: [],
+            collectedCoins: [],
+            achievements: [],
+            updatedAt: firestore.FieldValue.serverTimestamp(),
+          });
+        });
+        await batch.commit();
+        console.log(
+          `[Firebase] Reset ${usersSnapshot.docs.length} user profiles`
+        );
+      }
+
+      console.log("[Firebase] All data cleared except user accounts!");
+    } catch (error) {
+      console.error("Error clearing all data except users:", error);
+      throw error;
+    }
+  }
+
   static async clearCollection(collectionName: string): Promise<void> {
     try {
+      console.log(`[Firebase] Clearing collection: ${collectionName}`);
+
       const snapshot = await firestore().collection(collectionName).get();
-      const batch = firestore().batch();
 
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
+      if (snapshot.empty) {
+        console.log(`[Firebase] Collection ${collectionName} is already empty`);
+        return;
+      }
 
-      await batch.commit();
-      console.log(`Cleared ${snapshot.size} documents from ${collectionName}`);
+      // Firestore batch delete limit is 500 operations
+      const batchSize = 400; // Use 400 for safety margin
+      const docs = snapshot.docs;
+
+      for (let i = 0; i < docs.length; i += batchSize) {
+        const batch = firestore().batch();
+        const batchDocs = docs.slice(i, i + batchSize);
+
+        batchDocs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        console.log(
+          `[Firebase] Deleted ${
+            batchDocs.length
+          } documents from ${collectionName} (batch ${
+            Math.floor(i / batchSize) + 1
+          })`
+        );
+      }
+
+      console.log(
+        `[Firebase] Successfully cleared collection: ${collectionName} (${docs.length} documents deleted)`
+      );
     } catch (error) {
       console.error(`Error clearing collection ${collectionName}:`, error);
       throw error;

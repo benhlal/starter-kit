@@ -1,6 +1,6 @@
 import React from "react";
 import { Marker } from "react-native-maps";
-import { EventLocation, Coin } from "../../types";
+import { EventLocation, Coin } from "../../../types";
 
 interface MapMarkerProps {
   item: EventLocation | Coin;
@@ -18,11 +18,15 @@ export const MapMarker: React.FC<MapMarkerProps> = ({ item, onPress }) => {
   const isEventLocation = "title" in item;
   const isCoin = "value" in item;
 
+  const coord = (item as any).coordinate || (item as any).location;
+
   return (
     <Marker
-      coordinate={item.coordinate}
-      title={isEventLocation ? item.title : undefined}
-      description={isEventLocation ? item.description : undefined}
+      coordinate={coord}
+      title={isEventLocation ? (item as EventLocation).title : undefined}
+      description={
+        isEventLocation ? (item as EventLocation).description : undefined
+      }
       onPress={handlePress}
       pinColor={isCoin ? "#FFD700" : "#FF9500"} // Gold for coins, orange for events
     />

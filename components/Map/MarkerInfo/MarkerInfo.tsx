@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { EventLocation, Coin } from "../../types";
+import { EventLocation, Coin } from "../../../types";
 import { styles } from "./MarkerInfo.styles";
 
 interface MarkerInfoProps {
@@ -26,7 +26,9 @@ export const MarkerInfo: React.FC<MarkerInfoProps> = ({
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>
-            {isEventLocation ? item.title : `Coin (${item.value})`}
+            {isEventLocation
+              ? (item as EventLocation).title
+              : `Coin (${(item as Coin).value})`}
           </Text>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>×</Text>

@@ -1,7 +1,7 @@
 import { selector } from "recoil";
 import {
   eventsState,
-  // userProfileState, // TODO: Use when implementing user-specific filtering
+  userProfileState,
   coinsState,
   loadingState,
   errorState,
@@ -29,13 +29,16 @@ export const joinedEventsSelector = selector({
   key: "joinedEventsSelector",
   get: ({ get }) => {
     const events = get(eventsState);
-    // const userProfile = get(userProfileState); // TODO: Use for filtering joined events
+    const userProfile = get(userProfileState);
 
-    // TODO: Implement joined events filtering from user profile
-    return events.filter((event) => {
-      // Mock: return first 2 events as joined
-      return event.id === "1" || event.id === "2";
-    });
+    // If we have a user profile with joinedEvents, use it to compute joined events.
+    if (userProfile && Array.isArray((userProfile as any).joinedEvents)) {
+      const joinedIds: string[] = (userProfile as any).joinedEvents;
+      return events.filter((event) => joinedIds.includes(event.id));
+    }
+
+    // Fallback (mock/dev): return first 2 events as joined to preserve previous behavior
+    return events.filter((event) => event.id === "1" || event.id === "2");
   },
 });
 
