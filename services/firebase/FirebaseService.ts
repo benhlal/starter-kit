@@ -288,6 +288,14 @@ export class FirebaseService {
 
   static async collectCoin(coinId: string, userId: string): Promise<void> {
     try {
+      // First get the coin to retrieve its value
+      const coin = await this.getCoinById(coinId);
+      if (!coin) {
+        throw new Error(`Coin ${coinId} not found`);
+      }
+
+      const coinValue = coin.value || 0;
+
       const batch = firestore().batch();
       const coinRef = firestore().collection(this.COINS_COLLECTION).doc(coinId);
       batch.update(coinRef, {
@@ -298,7 +306,7 @@ export class FirebaseService {
 
       const userRef = firestore().collection(this.USERS_COLLECTION).doc(userId);
       batch.update(userRef, {
-        totalCoins: firestore.FieldValue.increment(1),
+        totalCoins: firestore.FieldValue.increment(coinValue), // Increment by coin value, not 1
         updatedAt: firestore.FieldValue.serverTimestamp(),
       });
 

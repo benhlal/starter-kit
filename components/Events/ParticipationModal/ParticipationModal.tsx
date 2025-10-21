@@ -111,8 +111,18 @@ export const ParticipationModal: React.FC<ParticipationModalProps> = ({
   // Get entry fee from event data (minimum 10 tokens)
   const entryFee = event?.huntDetails?.tokensRequired || 10;
 
-  // Calculate prize pool
-  const prizePool = event?.huntDetails?.totalPrizePool || event?.rewards?.coins || 0;
+  // Calculate prize pool: (current participants × base entry fee × bonus multiplier) + collected tokens
+  const currentParticipants = event?.currentParticipants || 0;
+  const collectedTokens = event?.huntDetails?.tokensCollected || 0;
+  const bonusMultiplier = 1.5; // Same as in populate scripts
+  const calculatedPrizePool = Math.floor(
+    currentParticipants * entryFee * bonusMultiplier + collectedTokens
+  );
+  const prizePool =
+    calculatedPrizePool ||
+    event?.huntDetails?.totalPrizePool ||
+    event?.rewards?.coins ||
+    0;
 
   // Calculate actual fee with timing adjustments
   const getEventStartTime = (eventDate: any): number | null => {

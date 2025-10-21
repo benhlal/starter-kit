@@ -238,12 +238,10 @@ export async function populateDemoData() {
       const targetTokenValue = baseFee * 2; // Target total token value to distribute (e.g., 10 tokens entry = 20 tokens worth of coins)
       const numCoins = Math.max(3, Math.min(8, Math.floor(baseFee / 3))); // 3-8 coins depending on entry fee
 
-      // Calculate prize pool
-      const lateFeePenalty =
-        status === "active" ? DEMO_CONFIG.LATE_FEE_PENALTY : 0;
+      // Calculate prize pool based ONLY on base entry fee (late fees are platform margin)
       const initialPrizePool = calculatePrizePool(
         participants.length,
-        baseFee + lateFeePenalty,
+        baseFee, // Use only base fee, not baseFee + lateFeePenalty
         0
       );
 
@@ -414,7 +412,7 @@ export async function populateDemoData() {
         if (collectedTokens > 0) {
           const finalPrizePool = calculatePrizePool(
             participants.length,
-            baseFee + lateFeePenalty,
+            baseFee, // Use only base fee for prize pool calculation
             collectedTokens
           );
           await FirebaseService.updateEvent(eventId, {
