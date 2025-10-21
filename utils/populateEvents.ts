@@ -17,6 +17,21 @@ const sampleImages = [
   "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80", // Modern city
   "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80", // Urban lifestyle
   "https://images.unsplash.com/photo-1494522358652-f30e61a60313?w=800&q=80", // Adventure/treasure hunt
+  "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&q=80", // City night
+  "https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=800&q=80", // Urban exploration
+  "https://images.unsplash.com/photo-1529655683826-aba9b3e77383?w=800&q=80", // City lights
+  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=800&q=80", // Mountain trail
+  "https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?w=800&q=80", // Beach adventure
+  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80", // Mountain landscape 2
+  "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800&q=80", // City downtown 2
+  "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800&q=80", // City skyline 2
+  "https://images.unsplash.com/photo-1516483638261-f4dbbd436418?w=800&q=80", // Forest path 2
+  "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80", // Waterfront city 2
+  "https://images.unsplash.com/photo-1554223090-74785ad8b2c3?w=800&q=80", // Marina/harbor 2
+  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80", // Urban bridge 2
+  "https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=800&q=80", // City park 2
+  "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=800&q=80", // Urban adventure 2
+  "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800&q=80", // City exploration 2
 ];
 
 // AR Coin Hunting event templates

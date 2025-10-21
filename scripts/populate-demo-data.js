@@ -7,6 +7,30 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+// Sample images - high quality, working Unsplash URLs for AR coin hunt events
+const sampleImages = [
+  "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&q=80", // NYC streets
+  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80", // Mountain landscape
+  "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=400&q=80", // City downtown
+  "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80", // City skyline
+  "https://images.unsplash.com/photo-1516483638261-f4dbbd436418?w=400&q=80", // Forest path
+  "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&q=80", // Waterfront city
+  "https://images.unsplash.com/photo-1554223090-74785ad8b2c3?w=400&q=80", // Marina/harbor
+  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&q=80", // Urban bridge
+  "https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=400&q=80", // City park
+  "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=400&q=80", // City exploration
+  "https://images.unsplash.com/photo-1542931565-e8bdd762a97b?w=400&q=80", // Tech/AR themed
+  "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&q=80", // Modern city
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80", // Urban lifestyle
+  "https://images.unsplash.com/photo-1494522358652-f30e61a60313?w=400&q=80", // Adventure/treasure hunt
+  "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=400&q=80", // Urban adventure
+  "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=400&q=80", // City night
+  "https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=400&q=80", // Urban exploration
+  "https://images.unsplash.com/photo-1529655683826-aba9b3e77383?w=400&q=80", // City lights
+  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=400&q=80", // Mountain trail
+  "https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?w=400&q=80", // Beach adventure
+];
+
 // Demo data configuration
 const DEMO_CONFIG = {
   TOTAL_EVENTS: 15,
@@ -287,10 +311,7 @@ async function createDemoEvent(location, template, users) {
       name: "AR Coin Hunt Team",
     },
     tags: ["ar", "coins", "hunt", location.terrain.toLowerCase()],
-    image: `https://images.unsplash.com/photo-${getRandomInt(
-      1000000,
-      9999999
-    )}?w=400&q=80`,
+    image: getRandomElement(sampleImages),
     rewards: {
       coins: prizePool,
       experience: getRandomInt(50, 200),

@@ -83,6 +83,16 @@ const EVENT_IMAGES = [
   "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80", // Urban lifestyle
   "https://images.unsplash.com/photo-1494522358652-f30e61a60313?w=400&q=80", // Adventure/treasure hunt
   "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=400&q=80", // Urban adventure
+  "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=400&q=80", // City night
+  "https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=400&q=80", // Urban exploration
+  "https://images.unsplash.com/photo-1529655683826-aba9b3e77383?w=400&q=80", // City lights
+  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=400&q=80", // Mountain trail
+  "https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?w=400&q=80", // Beach adventure
+  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80", // Mountain landscape 2
+  "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=400&q=80", // City downtown 2
+  "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80", // City skyline 2
+  "https://images.unsplash.com/photo-1516483638261-f4dbbd436418?w=400&q=80", // Forest path 2
+  "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&q=80", // Waterfront city 2
 ];
 
 function getRandomInt(min: number, max: number) {
@@ -142,7 +152,7 @@ function generateEventDates(status: string) {
     return { startDate, endDate };
   }
 
-  if (status === "ongoing") {
+  if (status === "active") {
     const startDate = new Date(
       now.getTime() - getRandomInt(30, 60) * 60 * 1000
     );
@@ -231,7 +241,6 @@ export async function populateDemoData() {
       // Calculate prize pool
       const lateFeePenalty =
         status === "active" ? DEMO_CONFIG.LATE_FEE_PENALTY : 0;
-      const totalEntryFees = participants.length * (baseFee + lateFeePenalty);
       const initialPrizePool = calculatePrizePool(
         participants.length,
         baseFee + lateFeePenalty,
