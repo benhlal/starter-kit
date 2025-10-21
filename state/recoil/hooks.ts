@@ -58,6 +58,33 @@ export const useEvents = () => {
     }
   }, [setEvents, setLoading, setError]);
 
+  // Subscribe to real-time updates for events once when this hook is used.
+  // This ensures changes to event documents (currentParticipants, tokensCollected, etc.)
+  // are pushed to all clients without needing manual refresh.
+  React.useEffect(() => {
+    let unsub: any | null = null;
+    try {
+      unsub = FirebaseService.subscribeToEvents((eventsData) => {
+        // Update recoil events state with the latest data
+        setEvents(eventsData);
+      });
+    } catch (e) {
+      console.warn("Failed to subscribe to events realtime updates:", e);
+    }
+
+    return () => {
+      try {
+        if (typeof unsub === "function") {
+          unsub();
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    };
+    // Intentionally only run once per hook instance
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const joinEvent = useCallback(
     async (eventId: string, userId: string) => {
       try {

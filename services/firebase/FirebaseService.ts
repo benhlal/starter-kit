@@ -19,6 +19,9 @@ export class FirebaseService {
   private static COINS_COLLECTION = "coins";
   private static USERS_COLLECTION = "users";
   private static AR_OBJECTS_COLLECTION = "arObjects";
+  private static PURCHASES_COLLECTION = "purchases";
+  private static MARGINS_COLLECTION = "margins";
+  private static UNCOLLECTED_COINS_COLLECTION = "uncollectedCoins";
 
   // Remove undefined values recursively (Firestore does not allow undefined fields)
   private static stripUndefined(input: any): any {
@@ -478,6 +481,36 @@ export class FirebaseService {
     }
   }
 
+  // Settings helpers (store global app settings in a `settings` collection)
+  static async getSettings(docId: string) {
+    try {
+      const doc = await firestore().collection("settings").doc(docId).get();
+      if (!doc.exists) return null;
+      return this.docToObject(doc);
+    } catch (error) {
+      console.error(`Error fetching settings/${docId}:`, error);
+      throw error;
+    }
+  }
+
+  static async upsertSettings(docId: string, payload: any) {
+    try {
+      await firestore()
+        .collection("settings")
+        .doc(docId)
+        .set(
+          {
+            ...this.stripUndefined(payload),
+            updatedAt: firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+    } catch (error) {
+      console.error(`Error upserting settings/${docId}:`, error);
+      throw error;
+    }
+  }
+
   // AR Objects
   static async createARObject(
     data: Omit<ARObject, "id" | "createdAt" | "updatedAt">
@@ -595,6 +628,8 @@ export class FirebaseService {
       throw error;
     }
   }
+
+  // (Duplicate settings helpers removed; use the single settings helpers defined earlier in this file.)
 
   static async upsertUserSpawnARObject(params: {
     userId: string;
@@ -724,6 +759,158 @@ export class FirebaseService {
       return docRef.id;
     } catch (error) {
       console.error("Error creating coin:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a token purchase using a mocked Stripe charge.
+   * - amountCents: amount in cents charged to the user (e.g. 1000 = $10.00)
+   * - tokens: number of in-game tokens granted for this purchase
+   * This method records a purchase document, increments the user's token balance,
+   * and records a margin entry for the platform revenue.
+   */
+  static async createTokenPurchase(
+    userId: string,
+    amountCents: number,
+    tokens: number,
+    currency: string = "usd",
+    metadata: Record<string, any> = {}
+  ): Promise<{ purchaseId: string; paymentIntent: any }> {
+    try {
+      // Mock Stripe payment intent
+      const paymentIntent = {
+        id: `pi_mock_${Date.now()}`,
+        status: "succeeded",
+        amount: amountCents,
+        currency,
+        metadata,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Create purchase record
+      const purchasePayload = this.stripUndefined({
+        userId,
+        type: "token_purchase",
+        amountCents,
+        currency,
+        tokens,
+        paymentIntent,
+        status: paymentIntent.status,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      });
+
+      const purchaseRef = await firestore()
+        .collection(this.PURCHASES_COLLECTION)
+        .add(purchasePayload);
+
+      // Update user token balance (totalCoins) atomically
+      const userRef = firestore().collection(this.USERS_COLLECTION).doc(userId);
+      await userRef.update({
+        totalCoins: firestore.FieldValue.increment(tokens),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Record platform margin (for now record full amount as margin record)
+      const marginPayload = this.stripUndefined({
+        purchaseId: purchaseRef.id,
+        userId,
+        amountCents,
+        currency,
+        reason: "token_purchase",
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      });
+      await firestore().collection(this.MARGINS_COLLECTION).add(marginPayload);
+
+      return { purchaseId: purchaseRef.id, paymentIntent };
+    } catch (error) {
+      console.error("Error creating token purchase:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Purchase coins using tokens (in-game currency).
+   * Deducts tokens from user balance and records a token-spend purchase and margin in tokens.
+   */
+  static async purchaseWithTokens(
+    userId: string,
+    tokensCost: number,
+    details: { item?: string; metadata?: Record<string, any> } = {}
+  ) {
+    const userRef = firestore().collection(this.USERS_COLLECTION).doc(userId);
+    const purchaseRef = firestore().collection(this.PURCHASES_COLLECTION).doc();
+    const marginRef = firestore().collection(this.MARGINS_COLLECTION).doc();
+
+    try {
+      await firestore().runTransaction(async (tx) => {
+        const userDoc = await tx.get(userRef);
+        if (!userDoc.exists) throw new Error("User not found");
+        const user = userDoc.data() || {};
+        const currentTokens = (user.totalCoins as number) || 0;
+        if (currentTokens < tokensCost) {
+          throw new Error("Insufficient tokens");
+        }
+
+        // Platform fee in tokens (example 10% fee on token purchases)
+        const platformFeeFraction = 0.1;
+        const platformFeeTokens = Math.floor(tokensCost * platformFeeFraction);
+
+        // Update user balance
+        tx.update(userRef, {
+          totalCoins: firestore.FieldValue.increment(-tokensCost),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Create purchase record
+        tx.set(
+          purchaseRef,
+          this.stripUndefined({
+            userId,
+            type: "token_spend",
+            tokensSpent: tokensCost,
+            item: details.item || "coin_pack",
+            metadata: details.metadata || {},
+            createdAt: firestore.FieldValue.serverTimestamp(),
+          })
+        );
+
+        // Record margin in tokens
+        tx.set(
+          marginRef,
+          this.stripUndefined({
+            userId,
+            purchaseId: purchaseRef.id,
+            tokens: platformFeeTokens,
+            reason: "token_spend_fee",
+            createdAt: firestore.FieldValue.serverTimestamp(),
+          })
+        );
+      });
+    } catch (error) {
+      console.error("Error purchasing with tokens:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Return basic stats about uncollected coins (count and total token value).
+   */
+  static async getUncollectedCoinsStats(eventId?: string) {
+    try {
+      let query: any = firestore()
+        .collection(this.COINS_COLLECTION)
+        .where("collected", "==", false);
+      if (eventId) query = query.where("eventId", "==", eventId);
+      const snapshot = await query.get();
+      const count = snapshot.docs.length;
+      const totalValue = snapshot.docs.reduce((sum: number, doc: any) => {
+        const d = doc.data() || {};
+        return sum + (d.value || 0);
+      }, 0);
+      return { count, totalValue };
+    } catch (error) {
+      console.error("Error fetching uncollected coins stats:", error);
       throw error;
     }
   }

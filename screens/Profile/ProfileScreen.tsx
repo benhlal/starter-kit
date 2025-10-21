@@ -12,6 +12,7 @@ import {
 } from "react-native";
 // import ARGPSDemo from "../../components/ARGPSDemo"; // Temporarily disabled
 import { CreateEventModal } from "../../components/Events/CreateEventModal";
+import { FirebaseService } from "../../services/firebase/FirebaseService";
 import { getUserPermissions } from "../../utils/userRoles";
 import {
   useUserProfile,
@@ -20,6 +21,7 @@ import {
 } from "../../state/recoil/hooks";
 import { styles } from "./ProfileScreen.styles";
 import MigrationScreen from "../../components/Migration";
+import TokenEconomySettings from "../../components/Admin/TokenEconomySettings";
 
 interface Achievement {
   id: string;
@@ -46,6 +48,7 @@ const ProfileScreen: React.FC = () => {
   const [showMigrationModal, setShowMigrationModal] = useState(false);
   const [showARGPS, setShowARGPS] = useState(false);
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [showTokenEconomyModal, setShowTokenEconomyModal] = useState(false);
 
   useEffect(() => {
     // Fetch user profile when component mounts
@@ -293,6 +296,12 @@ const ProfileScreen: React.FC = () => {
     ]);
   };
 
+  const openTokenEconomy = () => {
+    console.log("Opening Token Economy modal...");
+    Alert.alert("Opening", "Opening Token Economy settings...");
+    setShowTokenEconomyModal(true);
+  };
+
   const renderProfileHeader = () => (
     <View style={styles.header}>
       <View style={styles.profileImageContainer}>
@@ -426,6 +435,19 @@ const ProfileScreen: React.FC = () => {
                 <Text style={styles.settingIconText}>➕</Text>
               </View>
               <Text style={styles.settingText}>Create Event</Text>
+            </View>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={openTokenEconomy}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Text style={styles.settingIconText}>⚖️</Text>
+              </View>
+              <Text style={styles.settingText}>Token Economy Settings</Text>
             </View>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
@@ -782,6 +804,39 @@ const ProfileScreen: React.FC = () => {
           Alert.alert("Success", "Event created successfully!");
         }}
       />
+
+      {/* Token Economy Settings Modal (Admin) */}
+      <Modal
+        visible={showTokenEconomyModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowTokenEconomyModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "#1C1C1C" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: 20,
+              paddingTop: 60,
+              borderBottomWidth: 1,
+              borderBottomColor: "#333333",
+            }}
+          >
+            <Text style={{ color: "#EDEDED", fontSize: 20, fontWeight: "600" }}>
+              Token Economy Settings
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowTokenEconomyModal(false)}
+              style={{ padding: 8, borderRadius: 20, backgroundColor: "#333333" }}
+            >
+              <Text style={{ color: "#EDEDED", fontSize: 16 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <TokenEconomySettings />
+        </View>
+      </Modal>
     </View>
   );
 };

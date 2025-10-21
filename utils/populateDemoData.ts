@@ -1,5 +1,6 @@
 import { FirebaseService } from "../services/firebase/FirebaseService";
 import { EventType, EventStatus } from "../types";
+import { computeEconomy, distributeCoinValues } from "./tokenEconomy";
 
 // Demo data configuration
 const DEMO_CONFIG = {
@@ -233,17 +234,14 @@ export async function populateDemoData() {
           ? DEMO_CONFIG.BASE_ENTRY_FEE * getRandomInt(2, 4) // Higher entry fee for premium events (20-40 tokens)
           : DEMO_CONFIG.BASE_ENTRY_FEE; // Minimum 10 tokens
 
-      // Calculate number of coins based on flexible token distribution
-      // Instead of fixed ratio, distribute tokens across varying coin values
-      const targetTokenValue = baseFee * 2; // Target total token value to distribute (e.g., 10 tokens entry = 20 tokens worth of coins)
+      // Use centralized economy computation
       const numCoins = Math.max(3, Math.min(8, Math.floor(baseFee / 3))); // 3-8 coins depending on entry fee
-
-      // Calculate prize pool based ONLY on base entry fee (late fees are platform margin)
-      const initialPrizePool = calculatePrizePool(
-        participants.length,
-        baseFee, // Use only base fee, not baseFee + lateFeePenalty
-        0
-      );
+      const economy = computeEconomy({
+        participants: participants.length,
+        tokensRequired: baseFee,
+      });
+      const initialPrizePool = economy.prizePoolBase;
+      const targetTokenValue = economy.coinTokenTotal; // allocate coin token total from economy
 
       const eventData = {
         name: `${template.name} at ${location.name}`,
@@ -313,6 +311,7 @@ export async function populateDemoData() {
 
       // Create coins for the event with flexible token distribution
       const coins = [];
+      const values = distributeCoinValues(targetTokenValue, numCoins);
       let totalTokenValue = 0;
 
       for (let j = 0; j < numCoins; j++) {
@@ -321,24 +320,7 @@ export async function populateDemoData() {
           location.coords.longitude,
           200
         );
-
-        // Distribute remaining token value across coins with some randomness
-        let coinValue;
-        if (j === numCoins - 1) {
-          // Last coin gets remaining value to hit target
-          coinValue = Math.max(5, targetTokenValue - totalTokenValue);
-        } else {
-          // Distribute value with some high-value coins possible
-          const remainingValue = targetTokenValue - totalTokenValue;
-          const avgValuePerCoin = remainingValue / (numCoins - j);
-          const variance = avgValuePerCoin * 0.6; // 60% variance for interesting distribution
-          coinValue = Math.max(
-            5,
-            Math.min(50, avgValuePerCoin + (Math.random() - 0.5) * variance)
-          );
-          coinValue = Math.round(coinValue / 5) * 5; // Round to nearest 5
-        }
-
+        const coinValue = values[j];
         totalTokenValue += coinValue;
 
         const coinData = {
